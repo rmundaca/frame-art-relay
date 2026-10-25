@@ -1,0 +1,21 @@
+app:
+  host: "0.0.0.0"
+  port: 8092
+  debug: false
+
+media:
+  # Carpetas del NAS que se pueden elegir como fuente de un álbum
+  roots:
+    - "/volume1"
+
+frame:
+  # "Mis fotos" del TV tiene espacio limitado
+  max_images_per_album: 100
+  # Subidas por ciclo del supervisor, para no bloquear a los demás TV
+  uploads_per_tick: 10
+  request_timeout: 15
+  upload_timeout: 120
+
+icloud:
+  # Fotos descargadas por álbum compartido (se guardan en data/cache/icloud)
+  max_photos: 300

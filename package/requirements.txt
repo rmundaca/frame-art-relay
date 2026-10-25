@@ -1,0 +1,12 @@
+fastapi>=0.95.0,<0.100.0
+pydantic>=1.10.0,<2.0.0
+uvicorn>=0.20.0
+sqlalchemy>=1.4.0
+apscheduler>=3.10.0,<4.0.0
+pyyaml>=6.0
+python-multipart>=0.0.6
+httpx>=0.24.0,<0.28.0
+samsungtvws>=3.0.6,<4.0.0
+# 9.5.0 es la última versión con wheel manylinux i686
+Pillow==9.5.0; platform_machine == "i686" or platform_machine == "i386"
+Pillow>=9.5.0; platform_machine != "i686" and platform_machine != "i386"

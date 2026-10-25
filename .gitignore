@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Datos de runtime (SQLite, secretos, logs) y overrides locales
+package/data/
+package/config/config.yaml
+*.db
+*.db-shm
+*.db-wal
+*.log
+.env
+.env.*
+
+# Build
+dist/
+build/
+*.apk
+*.egg-info/
+
+# Herramientas
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+tools/.spike/
+
+# Entornos virtuales
+venv/
+.venv/
+env/
+
+# SO y editores
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
