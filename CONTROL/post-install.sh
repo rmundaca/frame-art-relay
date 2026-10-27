@@ -1,11 +1,29 @@
 #!/bin/sh
 PKG="frame-art"
 APKG_PATH="/usr/local/AppCentral/$PKG"
+STASH_DIR="/volume1/.$PKG-upgrade"
 cd "$APKG_PATH" || exit 1
+
+# Actualización: devuelve lo que pre-install.sh apartó
+RESTORED=0
+if [ -d "$STASH_DIR/data" ]; then
+    rm -rf data
+    mv "$STASH_DIR/data" data && RESTORED=1
+    if [ -f "$STASH_DIR/config.yaml" ]; then
+        mkdir -p config
+        cp "$STASH_DIR/config.yaml" config/config.yaml
+    fi
+    if [ -d "$STASH_DIR/venv" ]; then
+        rm -rf venv
+        mv "$STASH_DIR/venv" venv
+    fi
+    [ "$RESTORED" -eq 1 ] && rm -rf "$STASH_DIR"
+fi
 
 mkdir -p data
 LOG_FILE="$APKG_PATH/data/install.log"
 echo "=== Instalación de $PKG: $(date) ===" > "$LOG_FILE"
+[ "$RESTORED" -eq 1 ] && echo "Datos restaurados desde $STASH_DIR" >> "$LOG_FILE"
 
 export PATH="/opt/bin:/opt/sbin:$PATH"
 

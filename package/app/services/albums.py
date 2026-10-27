@@ -6,9 +6,9 @@ from pathlib import Path
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.models.schemas import AlbumSource, Image
+from app.models.schemas import Album, AlbumSource, Image
 from app.services import source_icloud, source_local
-from app.services.image_proc import make_thumbnail
+from app.services.image_proc import image_meta, make_thumbnail
 
 logger = logging.getLogger("albums")
 
@@ -17,11 +17,53 @@ def thumb_path(image_id: int) -> Path:
     return Path(settings["data_dir"]) / "thumbs" / f"{image_id}.jpg"
 
 
+def album_images(db: Session, album: Album) -> list:
+    """Imágenes incluidas que pueden ir al TV, con el tope por álbum, en orden de clave."""
+    limit = int(settings.get("frame", {}).get("max_images_per_album", 100))
+    return (db.query(Image).filter(Image.album_id == album.id, Image.excluded.is_(False))
+            .order_by(Image.key).limit(limit).all())
+
+
 def image_file(db: Session, image: Image) -> Path:
     source = db.get(AlbumSource, image.source_id)
     if source.kind == "icloud":
         return source_icloud.file_path(source.id, image.key)
     return source_local.file_path(source.path, image.key)
+
+
+def ensure_meta(db: Session, image: Image) -> bool:
+    """Lee una vez de la cabecera las dimensiones orientadas y la fecha de la toma. False si no se pudo."""
+    if image.width and image.height and image.taken_at is not None:
+        return True
+    try:
+        image.width, image.height, image.taken_at = image_meta(image_file(db, image))
+    except (ValueError, OSError) as exc:
+        logger.info("Sin metadatos para %s: %s", image.key, exc)
+        # Ilegible: sin fecha, para no bloquear la salida; se reintenta al cambiar el archivo
+        image.taken_at = ""
+        return False
+    return True
+
+
+def wants_date(db: Session, album: Album, image: Image) -> bool:
+    """La marca de fecha es solo para las fotos de iCloud de los álbumes que la tienen activada."""
+    return bool(album.date_stamp) and db.get(AlbumSource, image.source_id).kind == "icloud"
+
+
+def date_label(db: Session, album: Album, image: Image) -> str:
+    """"YYYY-MM-DD" que se dibuja en la foto, o "" si no lleva fecha."""
+    return (image.taken_at or "")[:10] if wants_date(db, album, image) else ""
+
+
+def fill_meta(db: Session, album: Album) -> None:
+    """Completa los metadatos pendientes de las fotos que van al TV (tras reescanear o migrar la base)."""
+    changed = False
+    for image in album_images(db, album):
+        if image.taken_at is None:
+            ensure_meta(db, image)
+            changed = True
+    if changed:
+        db.commit()
 
 
 def image_thumbnail(db: Session, image: Image) -> Path:
@@ -57,6 +99,7 @@ def rescan_source(db: Session, source: AlbumSource) -> None:
             db.delete(img)
         elif (img.size, img.mtime) != found[key]:
             img.size, img.mtime = found[key]
+            img.width = img.height = img.taken_at = None
             thumb_path(img.id).unlink(missing_ok=True)
     for key, (size, mtime) in found.items():
         if key not in existing:

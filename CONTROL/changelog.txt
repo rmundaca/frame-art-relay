@@ -1,3 +1,18 @@
+1.2.5 (2026-10-25)
+- Actualización de Frame Art.
+
+1.2.4 (2026-10-25)
+- Actualización de Frame Art.
+
+1.2.3 (2026-10-25)
+- Actualización de Frame Art.
+
+1.2.2 (2026-10-25)
+- Actualización de Frame Art.
+
+1.2.1 (2026-10-25)
+- Actualización de Frame Art.
+
 1.2.0 (2026-10-25)
 - Puerto 8092, iconos nuevos y álbumes compartidos de iCloud
 

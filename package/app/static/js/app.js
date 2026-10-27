@@ -24,8 +24,33 @@ const I18N = {
         includeSubfolders: 'Incluir subcarpetas', up: 'Subir un nivel', roots: 'Carpetas permitidas',
         folderAdded: 'Carpeta añadida',
         addIcloud: 'Añadir iCloud', icloudTitle: 'Álbum compartido de iCloud', icloudUrl: 'Enlace del álbum',
-        icloudHelp: 'En el iPhone: Fotos > Álbumes > tu álbum compartido > Personas > activa "Sitio web público" y copia el enlace.',
+        icloudHelp: 'En Fotos, abre las opciones de compartir del álbum, permite "Cualquier persona con el enlace" o activa "Sitio web público" y copia el enlace.',
         icloudAdded: 'Descargando las fotos de iCloud...', downloading: 'Descargando...',
+        composition: 'Composición automática',
+        compositionHint: 'Agrupa dos o tres fotos en una sola imagen, como una hoja de álbum. Las fotos utilizadas no se muestran también por separado.',
+        dateStamp: 'Fecha en las fotos de iCloud',
+        dateStampHint: 'Añade abajo a la derecha de cada foto de iCloud la fecha en que se tomó (AAAA-MM-DD). Las fotos de carpetas del NAS no cambian.',
+        appIntervalHint: 'Con 1 a 5 minutos cambia las imágenes la app, no el TV: solo con la pantalla encendida y solo con las fotos de este álbum.',
+        singleFit: 'Fotos sueltas',
+        fitCrop: 'Recortar a pantalla completa',
+        fitWhole: 'Mostrar completas',
+        singleFitHint: 'Las verticales y panorámicas que no van en una composición se muestran completas sobre el fondo en lugar de recortarse. Las horizontales que casi llenan la pantalla se siguen recortando.',
+        background: 'Fondo',
+        bgPaper: 'Papel',
+        bgBlur: 'Desenfocado',
+        backgroundHint: 'Color del espacio libre en las composiciones y en las fotos completas. Desenfocado usa las propias fotos.',
+        subjectDetection: 'Detectar el sujeto con Gemini',
+        subjectHint: 'Al recortar, conserva a las personas y animales de cada foto. Envía a Google una copia reducida de cada foto del álbum, sin ubicación ni otros metadatos.',
+        subjectNeedsKey: 'Configura la clave de Gemini en Ajustes para activarlo.',
+        outputMeta: '{photos} fotos · {total} imágenes para el TV',
+        compositions: 'Composiciones', regenerate: 'Regenerar', regenerating: 'Generando composiciones...',
+        compositionsHint: 'Imágenes generadas tal como llegan al TV. Toca una para ver sus fotos.',
+        composeWaiting: 'Agrupando las fotos...', composePending: 'Preparando {n} composiciones...',
+        noCompositions: 'Ninguna foto tiene una combinación adecuada: todas se muestran por separado.',
+        originals: 'Fotos originales',
+        originalsHint: 'Toca una foto para excluirla o incluirla. Las composiciones se rehacen solas.',
+        page: 'Composición', pageMembers: 'Fotos de esta composición', openFull: 'Ver a tamaño real',
+        pageStatus: { pending: 'Preparando', updating: 'Actualizando', error: 'Error' },
         matteStyle: { none: 'Sin marco', modern: 'Moderno', shadowbox: 'Caja' },
         matteColor: {
             black: 'negro', neutral: 'neutro', antique: 'antiguo', warm: 'cálido', polar: 'polar', sand: 'arena',
@@ -52,6 +77,7 @@ const I18N = {
         galleryEmpty: 'No hay fotos en "Mis fotos".', fromApp: 'App',
         deleteSelected: 'Borrar seleccionadas ({n})', deletePhotos: 'Borrar fotos del TV',
         deletePhotosMsg: 'Se borrarán {n} fotos del televisor.', photosDeleted: '{n} fotos borradas',
+        deletePagesMsg: 'Incluye {n} composiciones: todas sus fotos quedarán excluidas del álbum para que no se vuelvan a generar. Los archivos originales no se borran.',
         loadingGallery: 'Leyendo el TV...',
         // Horario
         emptyScheduleTitle: 'Sin franjas horarias', emptyScheduleText: 'Define qué álbum se muestra en cada TV y cuándo.',
@@ -66,6 +92,11 @@ const I18N = {
         theme: 'Tema', themeOpt: { system: 'Sistema', light: 'Claro', dark: 'Oscuro' },
         themeHint: 'Se guarda en este dispositivo.',
         language: 'Idioma', version: 'Versión {v}',
+        aiTitle: 'Gemini', aiKey: 'Clave de la API', aiModel: 'Modelo', aiLimit: 'Consultas por día como máximo',
+        aiKeySet: 'Configurada (termina en {hint})', aiKeyNone: 'Sin configurar', aiUsage: '{n} consultas hoy',
+        aiKeyPlaceholder: 'Pega la clave para cambiarla', aiTest: 'Probar', aiTestOk: 'Gemini responde correctamente.',
+        aiRemove: 'Quitar la clave',
+        aiHint: 'Se usa solo en los álbumes con «Detectar el sujeto con Gemini». La clave se guarda en el NAS y no se vuelve a mostrar.',
         err: {
             network: 'No se pudo contactar con el servidor.',
             not_found: 'Ya no existe.',
@@ -89,9 +120,21 @@ const I18N = {
             invalid_time: 'Hora no válida.',
             invalid_time_range: 'La hora de inicio y la de fin no pueden ser iguales.',
             slot_overlap: 'Se solapa con otra franja de ese televisor.',
-            invalid_icloud_url: 'Pega el enlace público del álbum (icloud.com/sharedalbum/#...).',
-            icloud_album_not_public: 'El álbum no es público. Activa "Sitio web público" en el iPhone.',
+            invalid_icloud_url: 'Pega el enlace público del álbum (photos.icloud.com/shared/album/... o icloud.com/sharedalbum/#...).',
+            icloud_album_not_public: 'El álbum no es público o el enlace caducó. Permite "Cualquier persona con el enlace" o activa "Sitio web público".',
             icloud_unreachable: 'No se pudo contactar con iCloud.',
+            invalid_composition_mode: 'Modo de composición no válido.',
+            invalid_background: 'Fondo no válido.',
+            invalid_single_fit: 'Ajuste de fotos sueltas no válido.',
+            gemini_key_missing: 'Falta la clave de Gemini. Configúrala en Ajustes.',
+            gemini_key_invalid: 'Gemini rechazó la clave.',
+            gemini_unreachable: 'No se pudo contactar con Gemini. Se reintentará; mientras tanto se recorta al centro.',
+            gemini_response_invalid: 'Gemini devolvió una respuesta no válida.',
+            gemini_quota_exceeded: 'Se alcanzó el límite de consultas a Gemini. Se continuará más tarde.',
+            invalid_gemini_model: 'Ese modelo de Gemini no existe.',
+            invalid_gemini_limit: 'Escribe un límite entre 1 y 100000.',
+            composition_source_unavailable: 'Falta una de las fotos de la composición. Reescanea el álbum.',
+            composition_render_failed: 'No se pudo generar la composición: alguna foto está dañada o es demasiado grande.',
             generic: 'Algo salió mal. Inténtalo de nuevo.',
         },
     },
@@ -115,8 +158,33 @@ const I18N = {
         includeSubfolders: 'Include subfolders', up: 'Up one level', roots: 'Allowed folders',
         folderAdded: 'Folder added',
         addIcloud: 'Add iCloud', icloudTitle: 'iCloud shared album', icloudUrl: 'Album link',
-        icloudHelp: 'On iPhone: Photos > Albums > your shared album > People > turn on "Public Website" and copy the link.',
+        icloudHelp: 'In Photos, open the album sharing options, allow "Anyone with the Link" or turn on "Public Website", and copy the link.',
         icloudAdded: 'Downloading photos from iCloud...', downloading: 'Downloading...',
+        composition: 'Automatic layouts',
+        compositionHint: 'Combines two or three photos into a single image, like an album page. Photos used in a layout are not shown on their own as well.',
+        dateStamp: 'Date on iCloud photos',
+        dateStampHint: 'Adds the date each iCloud photo was taken (YYYY-MM-DD) to its lower right corner. Photos from NAS folders are not changed.',
+        appIntervalHint: 'With 1 to 5 minutes the app changes the images instead of the TV: only while the screen is on, and only with this album’s photos.',
+        singleFit: 'Single photos',
+        fitCrop: 'Crop to full screen',
+        fitWhole: 'Show whole',
+        singleFitHint: 'Portrait and panoramic photos that are not in a layout are shown whole over the background instead of being cropped. Landscape photos that almost fill the screen are still cropped.',
+        background: 'Background',
+        bgPaper: 'Paper',
+        bgBlur: 'Blurred',
+        backgroundHint: 'Fills the free space in layouts and in photos shown whole. Blurred uses the photos themselves.',
+        subjectDetection: 'Detect the subject with Gemini',
+        subjectHint: 'Keeps the people and animals in each photo when cropping. Sends Google a reduced copy of every photo in the album, without location or other metadata.',
+        subjectNeedsKey: 'Set up the Gemini key in Settings to turn this on.',
+        outputMeta: '{photos} photos · {total} images for the TV',
+        compositions: 'Layouts', regenerate: 'Regenerate', regenerating: 'Generating layouts...',
+        compositionsHint: 'Images generated exactly as the TV receives them. Tap one to see its photos.',
+        composeWaiting: 'Grouping photos...', composePending: 'Preparing {n} layouts...',
+        noCompositions: 'No photos have a suitable combination: all of them are shown on their own.',
+        originals: 'Original photos',
+        originalsHint: 'Tap a photo to exclude or include it. Layouts are rebuilt automatically.',
+        page: 'Layout', pageMembers: 'Photos in this layout', openFull: 'View full size',
+        pageStatus: { pending: 'Preparing', updating: 'Updating', error: 'Error' },
         matteStyle: { none: 'No matte', modern: 'Modern', shadowbox: 'Shadowbox' },
         matteColor: {
             black: 'black', neutral: 'neutral', antique: 'antique', warm: 'warm', polar: 'polar', sand: 'sand',
@@ -142,6 +210,7 @@ const I18N = {
         galleryEmpty: 'There are no photos in "My Photos".', fromApp: 'App',
         deleteSelected: 'Delete selected ({n})', deletePhotos: 'Delete photos from TV',
         deletePhotosMsg: '{n} photos will be deleted from the TV.', photosDeleted: '{n} photos deleted',
+        deletePagesMsg: 'It includes {n} layouts: all their photos will be excluded from the album so they are not generated again. The original files are not deleted.',
         loadingGallery: 'Reading the TV...',
         emptyScheduleTitle: 'No time slots', emptyScheduleText: 'Choose which album each TV shows, and when.',
         needTvAndAlbum: 'Add a TV and an album first.',
@@ -154,6 +223,11 @@ const I18N = {
         theme: 'Theme', themeOpt: { system: 'System', light: 'Light', dark: 'Dark' },
         themeHint: 'Saved on this device.',
         language: 'Language', version: 'Version {v}',
+        aiTitle: 'Gemini', aiKey: 'API key', aiModel: 'Model', aiLimit: 'Maximum requests per day',
+        aiKeySet: 'Set (ends in {hint})', aiKeyNone: 'Not set', aiUsage: '{n} requests today',
+        aiKeyPlaceholder: 'Paste a key to change it', aiTest: 'Test', aiTestOk: 'Gemini is responding.',
+        aiRemove: 'Remove key',
+        aiHint: 'Only used by albums with “Detect the subject with Gemini”. The key is stored on the NAS and never shown again.',
         err: {
             network: 'Could not reach the server.',
             not_found: 'It no longer exists.',
@@ -177,9 +251,21 @@ const I18N = {
             invalid_time: 'Invalid time.',
             invalid_time_range: 'Start and end time cannot be the same.',
             slot_overlap: 'It overlaps another slot of that TV.',
-            invalid_icloud_url: 'Paste the public album link (icloud.com/sharedalbum/#...).',
-            icloud_album_not_public: 'The album is not public. Turn on "Public Website" on the iPhone.',
+            invalid_icloud_url: 'Paste the public album link (photos.icloud.com/shared/album/... or icloud.com/sharedalbum/#...).',
+            icloud_album_not_public: 'The album is not public or the link has expired. Allow "Anyone with the Link" or turn on "Public Website".',
             icloud_unreachable: 'Could not reach iCloud.',
+            invalid_composition_mode: 'Invalid layout mode.',
+            invalid_background: 'Invalid background.',
+            invalid_single_fit: 'Invalid setting for single photos.',
+            gemini_key_missing: 'The Gemini key is missing. Set it up in Settings.',
+            gemini_key_invalid: 'Gemini rejected the key.',
+            gemini_unreachable: 'Could not reach Gemini. It will retry; photos are center-cropped meanwhile.',
+            gemini_response_invalid: 'Gemini returned an invalid response.',
+            gemini_quota_exceeded: 'The Gemini request limit was reached. It will continue later.',
+            invalid_gemini_model: 'That Gemini model does not exist.',
+            invalid_gemini_limit: 'Enter a limit between 1 and 100000.',
+            composition_source_unavailable: 'One of the layout photos is missing. Rescan the album.',
+            composition_render_failed: 'The layout could not be generated: a photo is damaged or too large.',
             generic: 'Something went wrong. Please try again.',
         },
     },
@@ -413,12 +499,18 @@ function renderAlbums() {
                 <span class="row-main">
                     <span class="row-title">${esc(a.name)}</span>
                     <span class="row-meta">
-                        ${a.sources.length ? esc(t('albumMeta', { n: a.included, total: a.images })) : `<span class="tag warn">${t('noSources')}</span>`}
+                        ${a.sources.length ? esc(albumCount(a)) : `<span class="tag warn">${t('noSources')}</span>`}
                         · ${esc(intervalLabel(a.interval))} · ${t(a.shuffle ? 'shuffle' : 'sequential')}
                     </span>
                 </span>
                 ${CHEVRON}
             </button>`).join('')}</div></section>`;
+}
+
+function albumCount(a) {
+    return a.composition_mode === 'auto'
+        ? t('outputMeta', { photos: a.output.photos, total: a.output.total })
+        : t('albumMeta', { n: a.included, total: a.images });
 }
 
 function renderTvs() {
@@ -471,16 +563,32 @@ function albumFormHtml(a) {
         <label class="field"><span>${t('name')}</span>
             <input name="name" maxlength="60" autocomplete="off" value="${esc(a.name || '')}" required></label>
         <div class="field"><span>${t('interval')}</span>
-            ${chips('interval', S.meta.intervals.map(m => [m, intervalLabel(m)]), v => Number(v) === F.interval)}</div>
+            ${chips('interval', S.meta.intervals.map(m => [m, intervalLabel(m)]), v => Number(v) === F.interval)}
+            <p class="hint">${t('appIntervalHint')}</p></div>
         <div class="field"><span>${t('order')}</span>
             ${chips('shuffle', [['1', t('shuffle')], ['0', t('sequential')]], v => (v === '1') === F.shuffle)}</div>
         <label class="field"><span>${t('matte')}</span>
             <select name="matte">${S.meta.mattes.map(m =>
-                `<option value="${esc(m)}"${m === (a.matte || 'none') ? ' selected' : ''}>${esc(matteLabel(m))}</option>`).join('')}</select></label>`;
+                `<option value="${esc(m)}"${m === (a.matte || 'none') ? ' selected' : ''}>${esc(matteLabel(m))}</option>`).join('')}</select></label>
+        <div class="field">${chips('composition', [['1', t('composition')]], () => F.composition)}
+            <p class="hint">${t('compositionHint')}</p></div>
+        <div class="field">${chips('dateStamp', [['1', t('dateStamp')]], () => F.dateStamp)}
+            <p class="hint">${t('dateStampHint')}</p></div>
+        <div class="field"><span>${t('singleFit')}</span>
+            ${chips('singleFit', [['crop', t('fitCrop')], ['fit', t('fitWhole')]], v => v === F.singleFit)}
+            <p class="hint">${t('singleFitHint')}</p></div>
+        <div class="field"><span>${t('background')}</span>
+            ${chips('background', [['paper', t('bgPaper')], ['blur', t('bgBlur')]], v => v === F.background)}
+            <p class="hint">${t('backgroundHint')}</p></div>
+        <div class="field"><div class="chips">
+            <button type="button" class="chip${F.subject ? ' on' : ''}" data-chip="subject" data-value="1"
+                ${S.meta.ai || F.subject ? '' : 'disabled'}>${t('subjectDetection')}</button></div>
+            <p class="hint">${t('subjectHint')}${S.meta.ai ? '' : ` ${t('subjectNeedsKey')}`}</p></div>`;
 }
 
 function openNewAlbum() {
-    F = { interval: S.meta.intervals.includes(60) ? 60 : S.meta.intervals[0], shuffle: true };
+    F = { interval: S.meta.intervals.includes(60) ? 60 : S.meta.intervals[0], shuffle: true, composition: false,
+          dateStamp: true, singleFit: 'crop', background: 'paper', subject: false };
     openSheet(t('newAlbum'), `
         <form class="stack" id="albumForm" novalidate>
             ${albumFormHtml({})}
@@ -509,16 +617,22 @@ function openNewAlbum() {
 function albumBody(form) {
     return {
         name: form.elements.name.value.trim(), matte: form.elements.matte.value,
-        interval: F.interval, shuffle: F.shuffle,
+        interval: F.interval, shuffle: F.shuffle, composition_mode: F.composition ? 'auto' : 'off',
+        date_stamp: F.dateStamp, single_fit: F.singleFit, background: F.background, subject_detection: F.subject,
     };
 }
 
 function openAlbum(id) {
     const a = S.albums.find(x => x.id === id);
     if (!a) return;
-    F = { albumId: a.id, interval: a.interval, shuffle: a.shuffle };
+    F = { albumId: a.id, interval: a.interval, shuffle: a.shuffle, composition: a.composition_mode === 'auto',
+          dateStamp: a.date_stamp, singleFit: a.single_fit, background: a.background,
+          subject: a.subject_detection };
+    const auto = a.composition_mode === 'auto';
     openSheet(a.name, `
         <form class="stack" id="albumForm" novalidate>
+            ${a.subject_detection && a.subject_error
+                ? `<div class="banner warn"><p>${esc(errText(new Error(a.subject_error)))}</p></div>` : ''}
             ${albumFormHtml(a)}
             <div class="actions"><button type="submit" class="btn primary small">${t('save')}</button></div>
         </form>
@@ -540,10 +654,16 @@ function openAlbum(id) {
                     <button type="button" class="btn small ghost danger-text" data-action="del-source" data-id="${s.id}">${t('delete')}</button>
                 </div>`).join('')}</div>` : `<p class="muted small">${t('noSources')}</p>`}
         </section>
+        ${auto ? `<section class="set">
+            <div class="set-row"><h3>${t('compositions')} <span class="muted" id="albumOutput">${esc(albumCount(a))}</span></h3>
+                <button type="button" class="btn small ghost" data-action="compose">${t('regenerate')}</button></div>
+            <p class="hint">${t('compositionsHint')}</p>
+            <div id="albumPages" class="thumbs"><div class="small-loading"><span class="spinner"></span></div></div>
+        </section>` : ''}
         <section class="set">
-            <div class="set-row"><h3>${t('images')} <span class="muted">${esc(t('albumMeta', { n: a.included, total: a.images }))}</span></h3>
+            <div class="set-row"><h3>${t(auto ? 'originals' : 'images')} <span class="muted">${esc(t('albumMeta', { n: a.included, total: a.images }))}</span></h3>
                 <button type="button" class="btn small ghost" data-action="rescan">${t('rescan')}</button></div>
-            <p class="hint">${esc(t('imagesHint', { max: S.meta.max_images }))}</p>
+            <p class="hint">${esc(auto ? t('originalsHint') : t('imagesHint', { max: S.meta.max_images }))}</p>
             <div id="albumImages" class="thumbs"><div class="small-loading"><span class="spinner"></span></div></div>
         </section>
         <div class="actions spread">
@@ -556,9 +676,10 @@ function openAlbum(id) {
             const btn = $('button[type="submit"]', form);
             busy(btn, true);
             try {
-                await api(`/api/albums/${a.id}`, { method: 'PATCH', body: albumBody(form) });
+                const saved = await api(`/api/albums/${a.id}`, { method: 'PATCH', body: albumBody(form) });
                 toast(t('saved'));
                 await reload('albums');
+                if (saved.composition_mode !== a.composition_mode) { openAlbum(a.id); return; }
                 $('#sheetTitle').textContent = form.elements.name.value.trim();
             } catch (err) {
                 toast(errText(err), 'error');
@@ -566,7 +687,73 @@ function openAlbum(id) {
             busy(btn, false);
         };
         loadAlbumImages(a.id);
+        if (auto) loadAlbumPages(a.id);
     });
+}
+
+function pageThumb(p) {
+    const status = p.status === 'pending' && p.rendered_revision ? 'updating' : p.status;
+    const tag = p.status === 'error'
+        ? `<span class="tag danger">${esc(errText(new Error(p.last_error)))}</span>`
+        : (p.status !== 'ready' ? `<span class="tag">${esc(t(`pageStatus.${status}`))}</span>` : '');
+    return `<button type="button" class="thumb" data-page="${p.id}" title="${esc(p.members.map(m => m.key).join(', '))}">
+        ${p.rendered_revision ? `<img src="/api/pages/${p.id}/thumb?rev=${p.rendered_revision}" alt="" loading="lazy">`
+        : '<span class="small-loading" style="min-height:100%"><span class="spinner"></span></span>'}${tag}</button>`;
+}
+
+// Las composiciones se generan en segundo plano: se consulta su estado sin bloquear la interfaz
+async function loadAlbumPages(albumId) {
+    clearTimeout(F.pagesTimer);
+    let pages, albums;
+    try {
+        [pages, albums] = await Promise.all([api(`/api/albums/${albumId}/pages`), api('/api/albums')]);
+    } catch (err) {
+        toast(errText(err), 'error');
+        return;
+    }
+    S.albums = albums;
+    const box = $('#albumPages');
+    const a = S.albums.find(x => x.id === albumId);
+    if (!box || !a || F.albumId !== albumId) return;
+    F.pages = pages;
+    $('#albumOutput').textContent = albumCount(a);
+    const waiting = !a.output.current || a.output.pending > 0;
+    const status = !a.output.current ? t('composeWaiting')
+        : (a.output.pending ? t('composePending', { n: a.output.pending }) : '');
+    box.innerHTML = (status ? `<p class="hint"><span class="spinner inline"></span>${esc(status)}</p>` : '')
+        + (pages.length ? pages.map(pageThumb).join('') : (waiting ? '' : `<p class="muted small">${t('noCompositions')}</p>`));
+    if (waiting) F.pagesTimer = setTimeout(() => loadAlbumPages(albumId), 4000);
+}
+
+async function composeAlbum(btn) {
+    busy(btn, true);
+    try {
+        await api(`/api/albums/${F.albumId}/compose`, { method: 'POST' });
+        toast(t('regenerating'));
+        loadAlbumPages(F.albumId);
+    } catch (err) {
+        toast(errText(err), 'error');
+    }
+    busy(btn, false);
+}
+
+function openPage(pageId) {
+    const p = (F.pages || []).find(x => x.id === pageId);
+    if (!p) return;
+    openSheet(t('page'), `
+        ${p.rendered_revision ? `<div class="thumb large"><img src="/api/pages/${p.id}/image?rev=${p.rendered_revision}" alt=""></div>
+            <p class="hint"><a href="/api/pages/${p.id}/image?rev=${p.rendered_revision}" target="_blank" rel="noopener">${t('openFull')}</a></p>`
+        : '<div class="small-loading"><span class="spinner"></span></div>'}
+        ${p.status === 'error' ? `<div class="banner warn"><p>${esc(errText(new Error(p.last_error)))}</p></div>` : ''}
+        <section class="set">
+            <h3>${t('pageMembers')}</h3>
+            <div class="thumbs">${p.members.map(m => `
+                <div class="thumb" title="${esc(m.key)}"><img src="/api/images/${m.id}/thumb" alt="" loading="lazy">
+                    <span class="tag">${esc(m.key)}</span></div>`).join('')}</div>
+        </section>
+        <div class="actions">
+            <button type="button" class="btn primary" data-action="back-album">${t('back')}</button>
+        </div>`);
 }
 
 async function loadAlbumImages(albumId) {
@@ -690,7 +877,7 @@ function openIcloudForm() {
         <form class="stack" id="icloudForm" novalidate>
             <p class="hint">${t('icloudHelp')}</p>
             <label class="field"><span>${t('icloudUrl')}</span>
-                <input name="url" type="url" autocomplete="off" placeholder="https://www.icloud.com/sharedalbum/#..." required></label>
+                <input name="url" type="url" autocomplete="off" placeholder="https://photos.icloud.com/shared/album/..." required></label>
             <div class="actions">
                 <button type="button" class="btn ghost" data-action="back-album">${t('back')}</button>
                 <button type="submit" class="btn primary">${t('save')}</button>
@@ -831,7 +1018,7 @@ function deleteTv() {
 
 async function openGallery(tvId) {
     const tv = S.tvs.find(x => x.id === tvId);
-    F = { tvId, selected: new Set() };
+    F = { tvId, selected: new Set(), pages: new Set() };
     openSheet(t('gallery'), `<div class="small-loading"><span class="spinner"></span><p class="hint">${t('loadingGallery')}</p></div>`);
     let items;
     try {
@@ -845,9 +1032,9 @@ async function openGallery(tvId) {
     openSheet(`${t('gallery')} · ${tv.name}`, `
         <p class="hint">${t('galleryHelp')}</p>
         ${items.length ? `<div class="thumbs" style="margin-top:12px">${items.map(it => `
-            <button type="button" class="thumb" data-gsel="${esc(it.content_id)}" title="${esc(it.name || it.content_id)}">
+            <button type="button" class="thumb" data-gsel="${esc(it.content_id)}"${it.page_id ? ' data-gpage="1"' : ''} title="${esc(it.name || it.content_id)}">
                 <img src="${it.image_id ? `/api/images/${it.image_id}/thumb` : `/api/tvs/${tvId}/gallery/${encodeURIComponent(it.content_id)}/thumb`}" alt="" loading="lazy">
-                ${it.managed ? `<span class="tag ok">${esc(it.album || t('fromApp'))}</span>` : ''}
+                ${it.managed ? `<span class="tag ok">${esc([it.album || t('fromApp'), it.page_id ? t('page') : ''].filter(Boolean).join(' · '))}</span>` : ''}
             </button>`).join('')}</div>` : `<p class="muted" style="margin-top:12px">${t('galleryEmpty')}</p>`}
         <div class="actions spread">
             <button type="button" class="btn ghost" data-action="back-tv">${t('back')}</button>
@@ -858,6 +1045,9 @@ async function openGallery(tvId) {
 function toggleGallerySelection(btn) {
     const cid = btn.dataset.gsel;
     if (F.selected.has(cid)) F.selected.delete(cid); else F.selected.add(cid);
+    if (btn.dataset.gpage) {
+        if (F.selected.has(cid)) F.pages.add(cid); else F.pages.delete(cid);
+    }
     btn.classList.toggle('sel', F.selected.has(cid));
     const del = $('[data-action="gallery-delete"]');
     del.disabled = !F.selected.size;
@@ -867,7 +1057,9 @@ function toggleGallerySelection(btn) {
 function deleteGallerySelection() {
     const tvId = F.tvId;
     const ids = Array.from(F.selected);
-    confirmSheet(t('deletePhotos'), t('deletePhotosMsg', { n: ids.length }), t('delete'), async () => {
+    let message = t('deletePhotosMsg', { n: ids.length });
+    if (F.pages.size) message += ` ${t('deletePagesMsg', { n: F.pages.size })}`;
+    confirmSheet(t('deletePhotos'), message, t('delete'), async () => {
         try {
             const res = await api(`/api/tvs/${tvId}/gallery/delete`, { method: 'POST', body: { content_ids: ids } });
             toast(t('photosDeleted', { n: res.deleted.length }));
@@ -978,7 +1170,76 @@ function openSettings() {
             <h3>${t('roots')}</h3>
             ${S.meta.roots.map(r => `<p class="small path">${esc(r)}</p>`).join('') || '<p class="small muted">–</p>'}
         </section>
-        <p class="hint">${esc(t('version', { v: S.version || '–' }))}</p>`);
+        <section class="set" id="aiBox"><h3>${t('aiTitle')}</h3>
+            <div class="small-loading"><span class="spinner"></span></div></section>
+        <p class="hint">${esc(t('version', { v: S.version || '–' }))}</p>`, () => loadAiSettings());
+}
+
+async function loadAiSettings() {
+    let ai;
+    try {
+        ai = await api('/api/settings/ai');
+    } catch (err) {
+        toast(errText(err), 'error');
+        return;
+    }
+    S.meta.ai = ai.configured;
+    const box = $('#aiBox');
+    if (!box) return;
+    box.innerHTML = `<h3>${t('aiTitle')}</h3>
+        <form class="stack" id="aiForm" novalidate>
+            <label class="field"><span>${t('aiKey')}
+                <span class="muted">· ${esc(ai.configured ? t('aiKeySet', { hint: ai.key_hint }) : t('aiKeyNone'))}</span></span>
+                <input name="api_key" type="password" autocomplete="off" spellcheck="false"
+                    placeholder="${esc(t('aiKeyPlaceholder'))}"></label>
+            <label class="field"><span>${t('aiModel')}</span>
+                <input name="model" autocomplete="off" spellcheck="false" value="${esc(ai.model)}"></label>
+            <label class="field"><span>${t('aiLimit')}
+                <span class="muted">· ${esc(t('aiUsage', { n: ai.calls_today }))}</span></span>
+                <input name="max_calls_per_day" type="number" min="1" max="100000" inputmode="numeric"
+                    value="${esc(ai.max_calls_per_day)}"></label>
+            <p class="hint">${t('aiHint')}</p>
+            <div class="actions">
+                ${ai.configured ? `<button type="button" class="btn ghost danger-text" id="aiRemove">${t('aiRemove')}</button>` : ''}
+                ${ai.configured ? `<button type="button" class="btn ghost" id="aiTest">${t('aiTest')}</button>` : ''}
+                <button type="submit" class="btn primary">${t('save')}</button>
+            </div>
+        </form>`;
+    const form = $('#aiForm', box);
+    const save = async (payload, btn) => {
+        busy(btn, true);
+        try {
+            await api('/api/settings/ai', { method: 'PUT', body: payload });
+            toast(t('saved'));
+            loadAiSettings();
+        } catch (err) {
+            toast(errText(err), 'error');
+            busy(btn, false);
+        }
+    };
+    form.onsubmit = e => {
+        e.preventDefault();
+        const payload = {
+            model: form.elements.model.value.trim(),
+            max_calls_per_day: Number(form.elements.max_calls_per_day.value),
+        };
+        const key = form.elements.api_key.value.trim();
+        if (key) payload.api_key = key;
+        save(payload, $('button[type="submit"]', form));
+    };
+    const remove = $('#aiRemove', form);
+    if (remove) remove.onclick = () => save({ api_key: '' }, remove);
+    const test = $('#aiTest', form);
+    if (test) test.onclick = async () => {
+        busy(test, true);
+        try {
+            await api('/api/settings/ai/test', { method: 'POST' });
+            toast(t('aiTestOk'));
+        } catch (err) {
+            toast(errText(err), 'error');
+        }
+        busy(test, false);
+    };
 }
 
 /* ---------------------------------------------------------------- events */
@@ -991,12 +1252,22 @@ function onChip(chip) {
     else if (name === 'day') F.days ^= 1 << Number(value);
     else if (name === 'enabled') F.enabled = !F.enabled;
     else if (name === 'recursive') F.recursive = !F.recursive;
+    else if (name === 'composition') F.composition = !F.composition;
+    else if (name === 'dateStamp') F.dateStamp = !F.dateStamp;
+    else if (name === 'singleFit') F.singleFit = value;
+    else if (name === 'background') F.background = value;
+    else if (name === 'subject') F.subject = !F.subject;
     const isOn = {
         interval: v => Number(v) === F.interval,
         shuffle: v => (v === '1') === F.shuffle,
         day: v => Boolean(F.days & (1 << Number(v))),
         enabled: () => F.enabled,
         recursive: () => F.recursive,
+        composition: () => F.composition,
+        dateStamp: () => F.dateStamp,
+        singleFit: v => v === F.singleFit,
+        background: v => v === F.background,
+        subject: () => F.subject,
     }[name];
     $$('.chip', group).forEach(c => c.classList.toggle('on', isOn(c.dataset.value)));
 }
@@ -1009,6 +1280,7 @@ function onAction(action, el) {
         'back-album': () => openAlbum(F.albumId),
         'use-folder': () => useFolder(el),
         'rescan': () => rescanAlbum(el),
+        'compose': () => composeAlbum(el),
         'del-album': deleteAlbum,
         'del-source': () => deleteSource(Number(el.dataset.id)),
         'new-tv': () => openTvForm(null),
@@ -1039,6 +1311,8 @@ document.addEventListener('click', e => {
     if (tv) { openTv(Number(tv.dataset.tv)); return; }
     const slot = e.target.closest('[data-slot]');
     if (slot) { openSlot(Number(slot.dataset.slot)); return; }
+    const page = e.target.closest('[data-page]');
+    if (page) { openPage(Number(page.dataset.page)); return; }
     const image = e.target.closest('[data-image]');
     if (image) { toggleImage(image); return; }
     const browse = e.target.closest('[data-browse]');

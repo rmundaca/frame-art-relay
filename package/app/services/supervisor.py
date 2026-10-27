@@ -7,13 +7,18 @@ from sqlalchemy.orm import Session
 from app.models.schemas import Album, ScheduleSlot, Tv
 from app.services.schedule import active_slot
 from app.services.sync import sync_tv
-from app.services.tv_client import TvError, client_for
+from app.services.tv_client import NATIVE_MIN, TvError, client_for
 
 logger = logging.getLogger("supervisor")
 
 
 def rotation_signature(album: Album) -> str:
     return f"{album.id}:{album.interval}:{int(album.shuffle)}"
+
+
+def native_minutes(album: Album) -> int:
+    """Intervalo del slideshow nativo; 0 (desactivado) cuando la rotación la hace la app."""
+    return album.interval if album.interval >= NATIVE_MIN else 0
 
 
 def tick(db: Session, tv: Tv, now: datetime = None, client_factory=client_for) -> None:
@@ -38,7 +43,7 @@ def tick(db: Session, tv: Tv, now: datetime = None, client_factory=client_for) -
                     result = sync_tv(db, tv, album, client)
                     sig = rotation_signature(album)
                     if result.on_tv and (result.changed or tv.applied != sig):
-                        client.set_rotation(album.interval, album.shuffle)
+                        client.set_rotation(native_minutes(album), album.shuffle)
                         tv.applied = sig
                     if result.changed:
                         logger.info("TV %s: +%d -%d (pendientes %d)", tv.name, result.uploaded,

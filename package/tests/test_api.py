@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
@@ -55,10 +56,32 @@ class AlbumsApiTest(MediaRootMixin, unittest.TestCase):
 
     def test_validation(self):
         self.assertEqual(self.client.post("/api/albums", json={"name": " "}).json()["detail"], "invalid_name")
-        self.assertEqual(self.client.post("/api/albums", json={"name": "x", "interval": 5}).json()["detail"],
+        self.assertEqual(self.client.post("/api/albums", json={"name": "x", "interval": 7}).json()["detail"],
                          "invalid_interval")
         self.assertEqual(self.client.post("/api/albums", json={"name": "x", "matte": "gold"}).json()["detail"],
                          "invalid_matte")
+
+    def test_icloud_formats_are_preserved_and_deduplicated(self):
+        urls = ("https://photos.icloud.com/shared/album/06aExamplePublicAlbumLink",
+                "https://www.icloud.com/sharedalbum/#B0z5qAGN1JIFd3y")
+        album = self.client.post("/api/albums", json={"name": "iCloud"}).json()
+        try:
+            with patch("app.api.albums.source_icloud.album_name", return_value="Cloud album") as lookup, \
+                    patch("app.api.albums.run_now") as schedule:
+                for url in urls:
+                    submitted = url + "/" if "photos.icloud.com" in url else url + ";x"
+                    res = self.client.post(f"/api/albums/{album['id']}/sources",
+                                           json={"kind": "icloud", "path": submitted})
+                    self.assertEqual(res.status_code, 200, res.text)
+                    self.assertEqual(res.json()["sources"][-1]["path"], url)
+                    self.assertEqual(lookup.call_args.args[1], url)
+                    dup = self.client.post(f"/api/albums/{album['id']}/sources",
+                                           json={"kind": "icloud", "path": url})
+                    self.assertEqual(dup.status_code, 409)
+                    self.assertEqual(dup.json()["detail"], "source_exists")
+                self.assertEqual(schedule.call_count, 2)
+        finally:
+            self.client.delete(f"/api/albums/{album['id']}")
 
     def test_browse_rejects_outside_roots(self):
         res = self.client.get("/api/browse", params={"path": str(self.root / "..")})

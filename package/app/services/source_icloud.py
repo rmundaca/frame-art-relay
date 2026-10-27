@@ -1,8 +1,9 @@
-"""Álbumes compartidos de iCloud con "Sitio web público": lectura sin credenciales vía sharedstreams.
+"""Álbumes públicos de iCloud: lectura sin credenciales vía Shared Streams o CloudKit.
 
 Flujo: POST <base>/webstream (lista de fotos y derivados) -> POST <base>/webasseturls (URLs de descarga).
 Si el álbum vive en otra partición, Apple responde 330 con el host correcto en "X-Apple-MMe-Host".
 """
+import hashlib
 import json
 import logging
 import re
@@ -23,6 +24,9 @@ _BASE62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 _ALLOWED_SUFFIXES = (".icloud.com", ".icloud-content.com")
 _HEADERS = {"Content-Type": "text/plain", "Origin": "https://www.icloud.com"}
 _URL_BATCH = 25
+_CLOUD_PATH = "/database/1/com.apple.photos.cloud/production/"
+_CLOUD_ALBUM = re.compile(r"/shared/album/([A-Za-z0-9_-]{10,64})/?")
+_CLOUD_PRIVATE_ERRORS = ("NOT_FOUND", "ACCESS_DENIED", "AUTHENTICATION_REQUIRED", "PERMISSION_DENIED")
 
 
 class ICloudError(Exception):
@@ -31,7 +35,15 @@ class ICloudError(Exception):
 
 def parse_token(url: str) -> str:
     url = (url or "").strip()
-    parts = urlsplit(url)
+    try:
+        parts = urlsplit(url)
+    except ValueError:
+        raise ICloudError("invalid_icloud_url") from None
+    if parts.scheme == "https" and parts.hostname == "photos.icloud.com":
+        match = _CLOUD_ALBUM.fullmatch(parts.path)
+        if match:
+            return match.group(1)
+        raise ICloudError("invalid_icloud_url")
     if parts.scheme != "https" or parts.hostname not in ("www.icloud.com", "icloud.com") \
             or not parts.path.startswith("/sharedalbum"):
         raise ICloudError("invalid_icloud_url")
@@ -39,6 +51,132 @@ def parse_token(url: str) -> str:
     if not m:
         raise ICloudError("invalid_icloud_url")
     return m.group(1)
+
+
+def canonical_url(url: str) -> str:
+    token = parse_token(url)
+    if urlsplit(url.strip()).hostname == "photos.icloud.com":
+        return f"https://photos.icloud.com/shared/album/{token}"
+    return f"https://www.icloud.com/sharedalbum/#{token}"
+
+
+def _cloud_post(client: httpx.Client, url: str, body: dict, params: dict) -> dict:
+    try:
+        resp = client.post(_check_host(url), json=body, params=params)
+    except httpx.HTTPError as exc:
+        logger.warning("iCloud CloudKit: %s", type(exc).__name__)
+        raise ICloudError("icloud_unreachable") from None
+    if resp.status_code in (401, 403, 404):
+        raise ICloudError("icloud_album_not_public")
+    if resp.status_code != 200:
+        raise ICloudError("icloud_unreachable")
+    try:
+        data = resp.json()
+    except ValueError:
+        logger.warning("Respuesta JSON de CloudKit no valida")
+        raise ICloudError("icloud_unreachable") from None
+    if isinstance(data, dict) and data.get("serverErrorCode") in _CLOUD_PRIVATE_ERRORS:
+        raise ICloudError("icloud_album_not_public")
+    if not isinstance(data, dict) or data.get("serverErrorCode"):
+        logger.warning("Respuesta de CloudKit no valida")
+        raise ICloudError("icloud_unreachable")
+    return data
+
+
+def _resolve_cloud(client: httpx.Client, token: str) -> tuple:
+    data = _cloud_post(client, "https://ckdatabasews.icloud.com" + _CLOUD_PATH + "public/records/resolve",
+                       {"shortGUIDs": [{"value": token}]}, {"sharing_url_key": token})
+    try:
+        result = data["results"][0]
+        access = result.get("anonymousPublicAccess")
+        if result.get("serverErrorCode") in _CLOUD_PRIVATE_ERRORS:
+            raise ICloudError("icloud_album_not_public")
+        if result.get("serverErrorCode"):
+            raise ICloudError("icloud_unreachable")
+        if result.get("requireAppleLogin") or not access:
+            raise ICloudError("icloud_album_not_public")
+        partition = access["databasePartition"]
+        parts = urlsplit(partition)
+        if parts.path not in ("", "/") or parts.query or parts.fragment:
+            raise ValueError("invalid_partition")
+        base = _check_host(partition.rstrip("/")) + _CLOUD_PATH + "shared/records/query"
+        params = {"sharing_url_key": token, "publicAccessAuthToken": access["token"],
+                  "remapEnums": "true", "getCurrentSyncToken": "true"}
+        zone = result["zoneID"]
+        name = result["share"]["fields"].get("cloudkit.title", {}).get("value") or ""
+        return name, base, params, zone
+    except (AttributeError, KeyError, IndexError, TypeError, ValueError):
+        logger.warning("Metadatos de album CloudKit no validos")
+        raise ICloudError("icloud_unreachable") from None
+
+
+def album_name(client: httpx.Client, url: str) -> str:
+    url = canonical_url(url)
+    token = parse_token(url)
+    if urlsplit(url).hostname == "photos.icloud.com":
+        return _resolve_cloud(client, token)[0]
+    return fetch_stream(client, token)[1]
+
+
+def _cloud_photos(client: httpx.Client, token: str, limit: int) -> tuple:
+    name, base, params, zone = _resolve_cloud(client, token)
+    data = _cloud_post(client, base, {
+        "query": {"recordType": "HyperionIndexCountLookup", "filterBy": [
+            {"fieldName": "indexCountID", "comparator": "IN",
+             "fieldValue": {"value": ["CPLAssetByAddedDate"], "type": "STRING_LIST"}}]},
+        "zoneID": zone,
+    }, params)
+    try:
+        total = int(data["records"][0]["fields"]["itemCount"]["value"])
+        if total < 0:
+            raise ValueError("invalid_count")
+        wanted = {}
+        rank = 0
+        while rank < total and len(wanted) < limit:
+            data = _cloud_post(client, base, {
+                "query": {"recordType": "CPLAssetAndMasterByAddedDate", "filterBy": [
+                    {"fieldName": "direction", "comparator": "EQUALS",
+                     "fieldValue": {"value": "ASCENDING", "type": "STRING"}},
+                    {"fieldName": "startRank", "comparator": "EQUALS",
+                     "fieldValue": {"value": rank, "type": "INT64"}}]},
+                "zoneID": zone, "resultsLimit": min(100, 2 * (limit - len(wanted))),
+            }, params)
+            records = data["records"]
+            masters = {r["recordName"]: r for r in records if r["recordType"] == "CPLMaster"}
+            assets = [r for r in records if r["recordType"] == "CPLAsset"]
+            if not assets:
+                raise ValueError("incomplete_page")
+            rank += len(assets)
+            for asset in assets:
+                fields = asset["fields"]
+                if fields.get("isHidden", {}).get("value") or fields.get("trashReason", {}).get("value"):
+                    continue
+                master = masters[fields["masterRef"]["value"]["recordName"]]
+                if master["fields"].get("dataClassType", {}).get("value") != 1:
+                    continue
+                candidates = []
+                for source in (master["fields"], fields):
+                    for field, value in source.items():
+                        if not field.startswith("res") or not field.endswith("Res"):
+                            continue
+                        prefix = field[:-3]
+                        if source.get(prefix + "FileType", {}).get("value") != "public.jpeg":
+                            continue
+                        resource = value["value"]
+                        if resource.get("downloadURL"):
+                            area = int(source.get(prefix + "Width", {}).get("value") or 0) * \
+                                int(source.get(prefix + "Height", {}).get("value") or 0)
+                            candidates.append((area, _check_host(resource["downloadURL"])))
+                if not candidates:
+                    raise ValueError("missing_jpeg")
+                key = hashlib.sha256(asset["recordName"].encode("utf-8")).hexdigest()[:60] + ".jpg"
+                wanted[key] = max(candidates)[1]
+                if len(wanted) >= limit:
+                    break
+        return name, wanted
+    except (AttributeError, KeyError, IndexError, TypeError, ValueError):
+        logger.warning("Lista de fotos CloudKit no valida")
+        raise ICloudError("icloud_unreachable") from None
 
 
 def _base62(value: str) -> int:
@@ -148,19 +286,25 @@ def _download(client: httpx.Client, url: str, dest: Path) -> None:
 
 def refresh(source_id: int, url: str, client: httpx.Client = None) -> tuple:
     """Descarga las fotos nuevas, borra las que ya no están y devuelve (nombre, [(clave, tamaño, mtime)])."""
+    url = canonical_url(url)
     token = parse_token(url)
+    cloud = urlsplit(url).hostname == "photos.icloud.com"
     limit = int(settings.get("icloud", {}).get("max_photos", 300))
     own_client = client is None
     client = client or httpx.Client(timeout=30, follow_redirects=False)
     try:
-        base, name, photos = fetch_stream(client, token)
-        wanted = {}
-        for photo in photos:
-            guid, deriv = photo.get("photoGuid"), best_derivative(photo)
-            if guid and deriv and re.match(r"^[A-Za-z0-9\-]{1,60}$", guid):
-                wanted[f"{guid}.jpg"] = (guid, deriv["checksum"])
-            if len(wanted) >= limit:
-                break
+        if cloud:
+            name, direct_urls = _cloud_photos(client, token, limit)
+            wanted = {key: (key, key) for key in direct_urls}
+        else:
+            base, name, photos = fetch_stream(client, token)
+            wanted = {}
+            for photo in photos:
+                guid, deriv = photo.get("photoGuid"), best_derivative(photo)
+                if guid and deriv and re.match(r"^[A-Za-z0-9\-]{1,60}$", guid):
+                    wanted[f"{guid}.jpg"] = (guid, deriv["checksum"])
+                if len(wanted) >= limit:
+                    break
 
         folder = cache_dir(source_id)
         folder.mkdir(parents=True, exist_ok=True)
@@ -170,7 +314,7 @@ def refresh(source_id: int, url: str, client: httpx.Client = None) -> tuple:
 
         missing = {key: v for key, v in wanted.items() if not (folder / key).exists()}
         if missing:
-            urls = fetch_urls(client, base, [guid for guid, _ in missing.values()])
+            urls = direct_urls if cloud else fetch_urls(client, base, [guid for guid, _ in missing.values()])
             for key, (_, checksum) in missing.items():
                 if checksum in urls:
                     _download(client, urls[checksum], folder / key)

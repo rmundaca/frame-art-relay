@@ -288,6 +288,9 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .thumb.sel img { opacity: .6; }
 .thumb .tag { position: absolute; left: 6px; bottom: 6px; background: var(--surface); max-width: calc(100% - 12px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .thumbs > p, .thumbs > .small-loading { grid-column: 1 / -1; }
+/* Vista previa de una composición: el JPEG generado, ya en 16:9 */
+.thumb.large { margin-top: 4px; }
+.thumb.large:active { transform: none; }
 
 .path { word-break: break-all; white-space: normal; }
 .small-loading { min-height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }

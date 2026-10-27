@@ -1,4 +1,8 @@
 #!/bin/sh
+PKG="frame-art"
+APKG_PATH="/usr/local/AppCentral/$PKG"
+STASH_DIR="/volume1/.$PKG-upgrade"
+
 # Requiere Python >= 3.10. En el AS-202TE el Python de ADM es 3.7: hace falta Entware (App Central).
 
 export PATH="/opt/bin:/opt/sbin:$PATH"
@@ -17,6 +21,20 @@ if [ "$HAS_MODERN_PY" -eq 0 ] && [ ! -x "/opt/bin/opkg" ] && [ ! -x "/opt/bin/py
     echo "Instala 'Entware' desde App Central y vuelve a intentarlo."
     echo "=================================================================="
     exit 1
+fi
+
+# Actualización: ADM borra la carpeta de la app entera, así que se apartan los datos (BD, tokens,
+# cachés), el override de configuración y el venv; post-install.sh los devuelve.
+if [ -d "$APKG_PATH/data" ]; then
+    if [ -f "$APKG_PATH/CONTROL/start-stop.sh" ]; then
+        "$APKG_PATH/CONTROL/start-stop.sh" stop  # cierra la BD (checkpoint del WAL) antes de moverla
+    fi
+    rm -rf "$STASH_DIR"
+    mkdir -p "$STASH_DIR"
+    mv "$APKG_PATH/data" "$STASH_DIR/data" || exit 1
+    [ -f "$APKG_PATH/config/config.yaml" ] && cp "$APKG_PATH/config/config.yaml" "$STASH_DIR/config.yaml"
+    [ -d "$APKG_PATH/venv" ] && mv "$APKG_PATH/venv" "$STASH_DIR/venv"
+    echo "Datos apartados en $STASH_DIR"
 fi
 
 exit 0

@@ -12,9 +12,10 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.models.schemas import Album, Image, ScheduleSlot, Tv, TvContent
-from app.schedulers.tasks import run_now, supervise_tv
+from app.models.schemas import Album, CompositionMember, CompositionPage, Image, ScheduleSlot, Tv, TvContent
+from app.schedulers.tasks import compose_album, run_now, supervise_tv
 from app.services.albums import thumb_path
+from app.services.composition import page_thumb
 from app.services.image_proc import make_thumbnail
 from app.services.schedule import active_slot
 from app.services.tv_client import TvError, client_for, token_path
@@ -176,19 +177,31 @@ def gallery(tv_id: int, db: Session = Depends(get_db)):
         photos = client_for(tv).my_photos()
     except TvError as exc:
         raise _tv_error(exc)
-    managed = {r.content_id: r.image_id for r in db.query(TvContent).filter(TvContent.tv_id == tv.id)}
-    names = {}
-    if managed:
+    managed = {r.content_id: r for r in db.query(TvContent).filter(TvContent.tv_id == tv.id)}
+    names, pages = {}, {}
+    image_ids = [r.image_id for r in managed.values() if r.image_id]
+    if image_ids:
         rows = (db.query(Image.id, Image.key, Album.name).join(Album, Album.id == Image.album_id)
-                .filter(Image.id.in_([i for i in managed.values() if i])))
+                .filter(Image.id.in_(image_ids)))
         names = {img_id: (key, album) for img_id, key, album in rows}
+    page_ids = [r.page_id for r in managed.values() if r.page_id]
+    if page_ids:
+        rows = (db.query(CompositionPage.id, Album.name).join(Album, Album.id == CompositionPage.album_id)
+                .filter(CompositionPage.id.in_(page_ids)))
+        pages = dict(rows)
     items = []
     for p in photos:
         cid = p["content_id"]
-        image_id = managed.get(cid)
-        key, album = names.get(image_id, (None, None))
-        items.append({"content_id": cid, "managed": cid in managed, "image_id": image_id,
-                      "name": key, "album": album, "date": p.get("image_date")})
+        row = managed.get(cid)
+        item = {"content_id": cid, "managed": row is not None, "image_id": None, "page_id": None,
+                "page_revision": None, "members": 0, "name": None, "album": None, "date": p.get("image_date")}
+        if row and row.page_id:
+            item.update(page_id=row.page_id, page_revision=row.page_revision, album=pages.get(row.page_id),
+                        members=db.query(CompositionMember).filter(CompositionMember.page_id == row.page_id).count())
+        elif row:
+            key, album = names.get(row.image_id, (None, None))
+            item.update(image_id=row.image_id, name=key, album=album)
+        items.append(item)
     return items
 
 
@@ -204,6 +217,10 @@ def gallery_thumb(tv_id: int, content_id: str, db: Session = Depends(get_db)):
     row = db.query(TvContent).filter(TvContent.tv_id == tv.id, TvContent.content_id == content_id).first()
     if row and row.image_id and thumb_path(row.image_id).exists():
         return FileResponse(thumb_path(row.image_id), media_type="image/jpeg")
+    if row and row.page_id:
+        page = db.get(CompositionPage, row.page_id)
+        if page and page_thumb(page.album_id, page.id, row.page_revision).exists():
+            return FileResponse(page_thumb(page.album_id, page.id, row.page_revision), media_type="image/jpeg")
     path = _tv_thumb_path(tv.id, content_id)
     if not path.exists():
         try:
@@ -233,13 +250,22 @@ def gallery_delete(tv_id: int, req: DeleteIn, db: Session = Depends(get_db)):
     if deleted:
         rows = db.query(TvContent).filter(TvContent.tv_id == tv.id, TvContent.content_id.in_(deleted)).all()
         image_ids = [r.image_id for r in rows if r.image_id]
+        page_ids = [r.page_id for r in rows if r.page_id]
+        if page_ids:
+            # Borrar una composición excluye sus fotos; los archivos originales no se tocan
+            image_ids += [i for (i,) in db.query(CompositionMember.image_id)
+                          .filter(CompositionMember.page_id.in_(page_ids))]
+        albums = set()
         if image_ids:
             # Se excluyen del álbum para que el supervisor no las vuelva a subir
+            albums = {a for (a,) in db.query(Image.album_id).filter(Image.id.in_(image_ids)).distinct()}
             db.query(Image).filter(Image.id.in_(image_ids)).update({Image.excluded: True},
                                                                   synchronize_session=False)
         for row in rows:
             db.delete(row)
         db.commit()
+        for album_id in albums:
+            run_now(compose_album, album_id)
     for cid in deleted:
         _tv_thumb_path(tv.id, cid).unlink(missing_ok=True)
     tv.applied = None

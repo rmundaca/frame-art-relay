@@ -22,6 +22,54 @@ cd package
 ..\.venv\Scripts\python -m unittest discover -s tests -t .
 ```
 
+## Álbumes compartidos de iCloud
+
+Se admiten enlaces públicos `https://photos.icloud.com/shared/album/...` (CloudKit)
+y `https://www.icloud.com/sharedalbum/#...` (Shared Streams), sin iniciar sesión.
+En las opciones de compartir del álbum, permite **Cualquier persona con el enlace**
+o activa **Sitio web público**. Los álbumes privados o con enlaces caducados no se pueden leer.
+Las fotos se descargan como JPEG a la caché del directorio de datos, hasta el límite
+`icloud.max_photos`; los vídeos se omiten. Los enlaces de descarga temporales se
+renuevan en cada reescaneo. Ambas integraciones usan servicios internos de Apple
+que pueden cambiar.
+
+Con **Fecha en las fotos de iCloud** (activada por defecto en cada álbum), cada foto de iCloud
+que llega al TV lleva abajo a la derecha la fecha en que se tomó (`YYYY-MM-DD`, del EXIF
+`DateTimeOriginal`). En las composiciones va en cada foto. Las fotos sin fecha y las de carpetas
+del NAS se envían sin marca. La fuente es Inter (licencia OFL, `app/assets/fonts/`).
+
+## Composiciones automáticas
+
+Con **Composición automática** activada en un álbum, la app agrupa dos o tres fotos en una
+imagen de 3840x2160 (dos o tres verticales, dos panorámicas apiladas, una vertical con una o dos
+horizontales) y envía al TV esa imagen en lugar de las fotos sueltas. Para aprovechar el lienzo,
+cada foto se recorta al centro como mucho un 15 % por eje; nunca se deforma. Las fotos sin una
+combinación adecuada se envían solas. Los originales y sus exclusiones no cambian; las imágenes
+generadas van a `data/cache/compositions/`. Borrar una composición desde la galería del TV
+excluye sus fotos del álbum.
+
+Cada álbum tiene además dos ajustes de presentación:
+- **Fotos sueltas:** *Recortar a pantalla completa* (como siempre) o *Mostrar completas*. Con la
+  segunda, las verticales y panorámicas que van solas se muestran enteras (con el mismo recorte
+  limitado) sobre el fondo. Las horizontales que casi llenan la pantalla (4:3, 3:2, 16:9) se
+  siguen recortando.
+- **Fondo:** *Papel* (gris cálido) o *Desenfocado*, hecho con las propias fotos.
+- **Detectar el sujeto con Gemini** (opcional, desactivado por defecto): antes de recortar, la
+  app pregunta a Gemini dónde están las personas o animales de cada foto y orienta el recorte
+  para conservarlos. Envía a Google una copia de 768 px como máximo, sin EXIF ni ubicación; cada
+  foto se consulta una sola vez. La clave, el modelo (`gemini-flash-latest` por defecto) y un
+  tope diario de consultas se configuran en **Ajustes** y se guardan en `data/gemini.json`. Si
+  Gemini falla, se recorta al centro y se reintenta más tarde.
+
+## Rotación
+
+Cada álbum tiene un intervalo. De 10 minutos en adelante (10 min, 30 min, 1 h, 6 h, 12 h, 1 día y
+3 días) usa el slideshow nativo del TV. Con **1, 2, 3 o 5 minutos**, que el TV no admite, la app
+desactiva el slideshow y cambia ella la imagen. Solo lo hace con la pantalla encendida, y solo con
+las fotos del álbum. Cualquier conexión al canal de arte enciende la pantalla aunque el sensor de
+movimiento la haya apagado, así que, si el TV no responde (pantalla apagada o TV apagado), la app
+no lo toca hasta que vuelve a encenderse.
+
 ## Empaquetar e instalar
 
 ```powershell

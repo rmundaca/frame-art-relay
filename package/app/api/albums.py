@@ -9,9 +9,9 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.models.schemas import Album, AlbumSource, Image
-from app.schedulers.tasks import refresh_source, run_now
-from app.services import source_icloud, source_local
+from app.models.schemas import Album, AlbumSource, CompositionPage, Image
+from app.schedulers.tasks import compose_album, refresh_source, run_now
+from app.services import composition, source_icloud, source_local, subject_ai
 from app.services.albums import image_thumbnail, rescan_source, thumb_path
 from app.services.tv_client import INTERVALS, MATTES
 
@@ -23,6 +23,11 @@ class AlbumIn(BaseModel):
     matte: str = "none"
     shuffle: bool = True
     interval: int = 60
+    composition_mode: str = "off"
+    date_stamp: bool = True
+    background: str = "paper"
+    single_fit: str = "crop"
+    subject_detection: bool = False
 
 
 class AlbumPatch(BaseModel):
@@ -30,6 +35,11 @@ class AlbumPatch(BaseModel):
     matte: Optional[str] = None
     shuffle: Optional[bool] = None
     interval: Optional[int] = None
+    composition_mode: Optional[str] = None
+    date_stamp: Optional[bool] = None
+    background: Optional[str] = None
+    single_fit: Optional[str] = None
+    subject_detection: Optional[bool] = None
 
 
 class SourceIn(BaseModel):
@@ -54,9 +64,16 @@ def source_view(s: AlbumSource) -> dict:
 def album_view(album: Album, db: Session) -> dict:
     included_expr = func.coalesce(func.sum(case((Image.excluded.is_(False), 1), else_=0)), 0)
     total, included = db.query(func.count(Image.id), included_expr).filter(Image.album_id == album.id).one()
+    output = composition.effective_output(db, album)
     return {
         "id": album.id, "name": album.name, "matte": album.matte, "shuffle": album.shuffle,
         "interval": album.interval, "images": total, "included": int(included),
+        "composition_mode": album.composition_mode, "date_stamp": album.date_stamp,
+        "background": album.background, "single_fit": album.single_fit,
+        "subject_detection": album.subject_detection, "subject_error": album.subject_error,
+        # Fotos originales que van al TV (con el tope) e imágenes finales tras agrupar
+        "output": {"photos": output.photos, "total": output.total, "pending": output.pending,
+                   "errors": output.errors, "error": output.error, "current": output.current},
         "sources": [source_view(s) for s in album.sources],
     }
 
@@ -72,7 +89,18 @@ def _get_album(db: Session, album_id: int) -> Album:
     return album
 
 
-def _apply(album: Album, name=None, matte=None, shuffle=None, interval=None):
+def page_view(page: CompositionPage, db: Session) -> dict:
+    members = []
+    for m in page.members:
+        img = db.get(Image, m.image_id)
+        members.append({"id": img.id, "key": img.key, "excluded": img.excluded})
+    return {"id": page.id, "template": page.template, "revision": page.revision, "status": page.status,
+            "last_error": page.last_error, "rendered_revision": page.rendered_revision,
+            "members": members}
+
+
+def _apply(album: Album, name=None, matte=None, shuffle=None, interval=None, composition_mode=None,
+           date_stamp=None, background=None, single_fit=None, subject_detection=None):
     if name is not None:
         name = name.strip()
         if not name:
@@ -88,11 +116,31 @@ def _apply(album: Album, name=None, matte=None, shuffle=None, interval=None):
         if interval not in INTERVALS:
             raise HTTPException(400, "invalid_interval")
         album.interval = interval
+    if composition_mode is not None:
+        if composition_mode not in composition.MODES:
+            raise HTTPException(400, "invalid_composition_mode")
+        album.composition_mode = composition_mode
+    if date_stamp is not None:
+        album.date_stamp = date_stamp
+    if background is not None:
+        if background not in composition.BACKGROUNDS:
+            raise HTTPException(400, "invalid_background")
+        album.background = background
+    if single_fit is not None:
+        if single_fit not in composition.SINGLE_FITS:
+            raise HTTPException(400, "invalid_single_fit")
+        album.single_fit = single_fit
+    if subject_detection is not None:
+        if subject_detection and not album.subject_detection and not subject_ai.configured():
+            raise HTTPException(400, "gemini_key_missing")
+        if subject_detection != album.subject_detection:
+            album.subject_error = None
+        album.subject_detection = subject_detection
 
 
 @router.get("/meta")
 def meta():
-    return {"mattes": MATTES, "intervals": INTERVALS, "roots": source_local.roots(),
+    return {"mattes": MATTES, "intervals": INTERVALS, "roots": source_local.roots(), "ai": subject_ai.configured(),
             "max_images": int(settings.get("frame", {}).get("max_images_per_album", 100))}
 
 
@@ -114,7 +162,8 @@ def list_albums(db: Session = Depends(get_db)):
 @router.post("/albums")
 def create_album(req: AlbumIn, db: Session = Depends(get_db)):
     album = Album()
-    _apply(album, req.name, req.matte, req.shuffle, req.interval)
+    _apply(album, req.name, req.matte, req.shuffle, req.interval, req.composition_mode, req.date_stamp,
+           req.background, req.single_fit, req.subject_detection)
     db.add(album)
     db.commit()
     db.refresh(album)
@@ -124,8 +173,15 @@ def create_album(req: AlbumIn, db: Session = Depends(get_db)):
 @router.patch("/albums/{album_id}")
 def update_album(album_id: int, req: AlbumPatch, db: Session = Depends(get_db)):
     album = _get_album(db, album_id)
-    _apply(album, req.name, req.matte, req.shuffle, req.interval)
+    before = (album.composition_mode, album.date_stamp, album.background, album.single_fit, album.subject_detection)
+    _apply(album, req.name, req.matte, req.shuffle, req.interval, req.composition_mode, req.date_stamp,
+           req.background, req.single_fit, req.subject_detection)
     db.commit()
+    if (album.composition_mode, album.date_stamp, album.background, album.single_fit,
+            album.subject_detection) != before:
+        # Al activar se agrupa y al desactivar se retiran las páginas; la fecha, el fondo y el sujeto cambian la
+        # firma de las páginas y "fit" necesita las dimensiones. El TV cambia cuando la salida nueva está lista
+        run_now(compose_album, album.id)
     return album_view(album, db)
 
 
@@ -137,6 +193,7 @@ def delete_album(album_id: int, db: Session = Depends(get_db)):
     for source in album.sources:
         if source.kind == "icloud":
             source_icloud.remove_cache(source.id)
+    composition.remove_cache(album.id)
     db.delete(album)
     db.commit()
     return {"ok": True}
@@ -159,19 +216,19 @@ def add_source(album_id: int, req: SourceIn, db: Session = Depends(get_db)):
     db.add(source)
     db.commit()
     rescan_source(db, source)
+    run_now(compose_album, album.id)
     db.refresh(album)
     return album_view(album, db)
 
 
 def _add_icloud_source(db: Session, album: Album, url: str) -> dict:
     try:
-        token = source_icloud.parse_token(url)
+        url = source_icloud.canonical_url(url)
         # Validación rápida (álbum público y nombre); la descarga sigue en segundo plano
         with httpx.Client(timeout=15, follow_redirects=False) as client:
-            _, name, _ = source_icloud.fetch_stream(client, token)
+            name = source_icloud.album_name(client, url)
     except source_icloud.ICloudError as exc:
         raise HTTPException(400, str(exc))
-    url = f"https://www.icloud.com/sharedalbum/#{token}"
     if any(s.path == url for s in album.sources):
         raise HTTPException(409, "source_exists")
     source = AlbumSource(album_id=album.id, kind="icloud", path=url, label=name or None)
@@ -193,6 +250,7 @@ def delete_source(album_id: int, source_id: int, db: Session = Depends(get_db)):
         source_icloud.remove_cache(source.id)
     db.delete(source)
     db.commit()
+    run_now(compose_album, album_id)
     return album_view(_get_album(db, album_id), db)
 
 
@@ -204,6 +262,8 @@ def rescan(album_id: int, db: Session = Depends(get_db)):
             run_now(refresh_source, source.id)
         else:
             rescan_source(db, source)
+    # Las fuentes de iCloud vuelven a agrupar al terminar su descarga; esto agrupa con lo que ya hay
+    run_now(compose_album, album.id)
     db.refresh(album)
     return album_view(album, db)
 
@@ -221,6 +281,7 @@ def update_image(image_id: int, req: ImagePatch, db: Session = Depends(get_db)):
         raise HTTPException(404, "not_found")
     img.excluded = req.excluded
     db.commit()
+    run_now(compose_album, img.album_id)
     return image_view(img)
 
 
@@ -234,3 +295,48 @@ def image_thumb(image_id: int, db: Session = Depends(get_db)):
     except (ValueError, OSError):
         raise HTTPException(404, "not_found")
     return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "max-age=86400"})
+
+
+@router.get("/albums/{album_id}/pages")
+def list_pages(album_id: int, db: Session = Depends(get_db)):
+    _get_album(db, album_id)
+    return [page_view(p, db) for p in composition.active_pages(db, album_id)]
+
+
+@router.post("/albums/{album_id}/compose")
+def compose(album_id: int, db: Session = Depends(get_db)):
+    """Vuelve a agrupar y a generar lo pendiente, también las páginas con error."""
+    album = _get_album(db, album_id)
+    if album.composition_mode != "auto":
+        raise HTTPException(400, "invalid_composition_mode")
+    for page in composition.active_pages(db, album.id):
+        if page.status == "error":
+            page.status, page.last_error = "pending", None
+    db.commit()
+    run_now(compose_album, album.id)
+    return album_view(album, db)
+
+
+def _page_asset(db: Session, page_id: int, rev: Optional[int], thumb: bool):
+    page = db.get(CompositionPage, page_id)
+    if not page:
+        raise HTTPException(404, "not_found")
+    revision = rev or page.rendered_revision
+    if not revision:
+        raise HTTPException(404, "not_found")
+    path = (composition.page_thumb if thumb else composition.page_file)(page.album_id, page.id, revision)
+    if not path.exists():
+        raise HTTPException(404, "not_found")
+    # Cada revisión tiene su propio archivo y nunca cambia
+    return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "max-age=604800"})
+
+
+@router.get("/pages/{page_id}/thumb")
+def page_thumb(page_id: int, rev: Optional[int] = None, db: Session = Depends(get_db)):
+    return _page_asset(db, page_id, rev, thumb=True)
+
+
+@router.get("/pages/{page_id}/image")
+def page_image(page_id: int, rev: Optional[int] = None, db: Session = Depends(get_db)):
+    """JPEG generado tal como se sube al TV."""
+    return _page_asset(db, page_id, rev, thumb=False)

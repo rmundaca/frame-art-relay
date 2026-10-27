@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app import __version__
-from app.api import albums, schedule, tvs
+from app.api import albums, schedule, settings as settings_api, tvs
 from app.core.config import settings
 from app.core.database import Base, engine
 from app.models.schemas import init_db_migrations
@@ -21,7 +21,7 @@ init_db_migrations(engine)
 app = FastAPI(title="Frame Art", version=__version__)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
-for module in (albums, tvs, schedule):
+for module in (albums, tvs, schedule, settings_api):
     app.include_router(module.router)
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"

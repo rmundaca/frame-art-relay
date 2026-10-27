@@ -28,8 +28,12 @@ MY_PHOTOS = "MY-C0002"
 CLIENT_NAME = "FrameArt"
 MATTES = ["none"] + [f"{style}_{color}" for style in ("modern", "shadowbox") for color in (
     "black", "neutral", "antique", "warm", "polar", "sand", "seafoam", "sage", "burgandy", "navy")]
-# Intervalos de rotación (minutos) que acepta el modelo 2019
-INTERVALS = [10, 30, 60, 360, 720, 1440, 4320]
+# Intervalos de rotación (minutos) que acepta el modelo 2019; los menores de NATIVE_MIN los rota la app
+NATIVE_INTERVALS = [10, 30, 60, 360, 720, 1440, 4320]
+APP_INTERVALS = [1, 2, 3, 5]
+INTERVALS = APP_INTERVALS + NATIVE_INTERVALS
+NATIVE_MIN = NATIVE_INTERVALS[0]
+SELECT_DEADLINE = 10
 
 _locks = {}
 _locks_guard = threading.Lock()
@@ -129,7 +133,10 @@ class TvClient:
         return resp.json().get("device", {})
 
     def state(self) -> str:
-        """offline | standby | art | tv (en uso o arrancando) | on (sin emparejar)."""
+        """offline | standby | art | tv (en uso o arrancando) | on (sin emparejar).
+
+        Con la pantalla apagada por el sensor de movimiento REST no responde y el TV cuenta como offline. No se
+        prueba el canal de arte: solo con conectarse a él la pantalla se enciende (fase 11)."""
         try:
             power = self.rest_info().get("PowerState", "on")
         except (requests.RequestException, ValueError):
@@ -193,6 +200,25 @@ class TvClient:
             except exceptions.ResponseError:
                 # Firmwares más nuevos solo conocen el nombre actual del comando
                 art.set_slideshow_status(duration=minutes, type=shuffle, category_id=MY_PHOTOS)
+
+    def current(self) -> str:
+        """content_id de la imagen que muestra el TV."""
+        with self._art() as art:
+            return str((art.get_current() or {}).get("content_id") or "")
+
+    def select(self, content_id: str) -> None:
+        """Muestra una imagen. Enciende la pantalla aunque el sensor la haya apagado y desactiva el slideshow.
+
+        A veces el TV aplica el cambio sin responder: ante un tiempo agotado se confirma con la imagen actual."""
+        try:
+            with self._art(deadline=SELECT_DEADLINE) as art:
+                art.select_image(content_id, show=True)
+            return
+        except TvError as exc:
+            if exc.code != "tv_timeout":
+                raise
+        if self.current() != content_id:
+            raise TvError("tv_timeout")
 
     def wake(self, mac: str) -> None:
         raw = bytes.fromhex(mac.replace(":", "").replace("-", ""))
