@@ -1,4 +1,4 @@
-"""Franjas horarias semanales: días como máscara de bits (bit 0 = lunes) y horas "HH:MM" en hora local del NAS."""
+"""Weekly time slots: days as a bitmask (bit 0 = Monday) and "HH:MM" times in NAS local time."""
 import re
 from datetime import datetime
 
@@ -14,7 +14,7 @@ def parse_hhmm(value: str) -> int:
 
 
 def week_ranges(days: int, start: str, end: str) -> list:
-    """Rangos [inicio, fin) en minutos de la semana; una franja que cruza medianoche termina al día siguiente."""
+    """[start, end) ranges in minutes of the week; a slot that crosses midnight ends the next day."""
     s, e = parse_hhmm(start), parse_hhmm(end)
     length = (e - s) % 1440
     ranges = []
@@ -26,7 +26,7 @@ def week_ranges(days: int, start: str, end: str) -> list:
 
 
 def _overlap(a, b) -> bool:
-    # Se comparan también desplazados una semana para cubrir la franja de domingo que cruza a lunes
+    # Also compared shifted by a week to cover a Sunday slot that crosses into Monday
     for shift in (-WEEK, 0, WEEK):
         if a[0] < b[1] + shift and b[0] + shift < a[1]:
             return True
@@ -34,7 +34,7 @@ def _overlap(a, b) -> bool:
 
 
 def slots_overlap(a: tuple, b: tuple) -> bool:
-    """a y b son (days, start, end)."""
+    """a and b are (days, start, end)."""
     return any(_overlap(x, y) for x in week_ranges(*a) for y in week_ranges(*b))
 
 

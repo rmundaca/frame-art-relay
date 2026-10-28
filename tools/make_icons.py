@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Genera todos los iconos (ADM, PWA, favicon) desde assets/icon-source.png (1024×1024)."""
+"""Generates every icon (ADM, PWA, favicon) from assets/icon-source.png (1024x1024)."""
 from pathlib import Path
 
 from PIL import Image
@@ -23,7 +23,7 @@ TARGETS = {
 def main():
     src = Image.open(SOURCE).convert("RGBA")
     if src.width != src.height:
-        raise SystemExit("assets/icon-source.png debe ser cuadrado")
+        raise SystemExit("assets/icon-source.png must be square")
     flat = Image.new("RGB", src.size, BACKGROUND)
     flat.paste(src, mask=src.getchannel("A"))
 

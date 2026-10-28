@@ -1,11 +1,11 @@
-"""Carpetas del NAS como fuente de imágenes, limitadas a las raíces de la configuración."""
+"""NAS folders as an image source, limited to the configured roots."""
 import os
 from pathlib import Path
 
 from app.core.config import settings
 from app.services.image_proc import IMAGE_EXTENSIONS
 
-# Carpetas internas de ADM (miniaturas, papelera) y ocultas
+# ADM internal folders (thumbnails, recycle bin) and hidden ones
 _SKIP_PREFIXES = (".", "@", "#")
 
 
@@ -21,7 +21,7 @@ def _within(path: str, root: str) -> bool:
 
 
 def resolve(path: str) -> str:
-    """Ruta real dentro de alguna raíz o ValueError; realpath deshace '..' y enlaces simbólicos."""
+    """Real path inside one of the roots, or ValueError; realpath resolves '..' and symlinks."""
     if not path or "\x00" in path:
         raise ValueError("invalid_path")
     real = os.path.realpath(path)
@@ -62,7 +62,7 @@ def browse(path: str = "") -> dict:
 
 
 def scan(path: str, recursive: bool) -> list:
-    """[(clave relativa, tamaño, mtime)] de las imágenes de la carpeta."""
+    """[(relative key, size, mtime)] of the images in the folder."""
     base = resolve(path)
     found = []
     for current, dirnames, filenames in os.walk(base):

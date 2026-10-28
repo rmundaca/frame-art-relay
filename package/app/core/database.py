@@ -17,7 +17,7 @@ def _sqlite_pragmas(dbapi_connection, connection_record):
     cursor = dbapi_connection.cursor()
     cursor.execute("PRAGMA journal_mode=WAL;")
     cursor.execute("PRAGMA synchronous=NORMAL;")
-    cursor.execute("PRAGMA cache_size=-2000;")  # ~2 MB por conexión
+    cursor.execute("PRAGMA cache_size=-2000;")  # ~2 MB per connection
     cursor.execute("PRAGMA foreign_keys=ON;")
     cursor.close()
 

@@ -1,9 +1,9 @@
-"""Detección del sujeto principal de una foto con Gemini, para orientar los recortes (fase 11.4).
+"""Detects the main subject of a photo with Gemini, to steer the crops.
 
-- Opcional por álbum (Album.subject_detection). La clave y el modelo se guardan en data_dir/gemini.json.
-- Se envía una copia reducida (lado mayor SEND_SIZE) recodificada sin EXIF, por tanto sin GPS.
-- REST directo con httpx (el SDK google-genai exige Pydantic v2) y solo al host de la API.
-- El resultado se guarda por versión de la foto: cada foto se consulta una sola vez.
+- Optional per album (Album.subject_detection). The key and model are stored in data_dir/gemini.json.
+- Sends a reduced copy (long side SEND_SIZE) re-encoded without EXIF, hence without GPS.
+- Plain REST with httpx (the google-genai SDK requires Pydantic v2) and only to the API host.
+- The result is stored per photo version: each photo is queried only once.
 """
 import base64
 import io
@@ -25,8 +25,8 @@ logger = logging.getLogger("subject_ai")
 
 API_HOST = "generativelanguage.googleapis.com"
 API_BASE = f"https://{API_HOST}/v1beta/models/"
-DEFAULT_MODEL = "gemini-flash-latest"  # alias de Google al Flash vigente
-DEFAULT_MAX_CALLS = 500  # consultas por día
+DEFAULT_MODEL = "gemini-flash-latest"  # Google alias for the current Flash model
+DEFAULT_MAX_CALLS = 500  # requests per day
 SEND_SIZE = 768
 TIMEOUT = 30
 _MODEL_RE = re.compile(r"^[a-z0-9][a-z0-9.\-]{0,63}$")
@@ -48,11 +48,11 @@ SCHEMA = {
 
 
 class SubjectError(Exception):
-    """Códigos: gemini_key_missing, gemini_key_invalid, gemini_unreachable, gemini_response_invalid,
-    gemini_quota_exceeded. Solo gemini_response_invalid es propio de una foto; los demás detienen la tanda."""
+    """Codes: gemini_key_missing, gemini_key_invalid, gemini_unreachable, gemini_response_invalid,
+    gemini_quota_exceeded. Only gemini_response_invalid is specific to one photo; the others stop the batch."""
 
 
-# ------------------------------------------------------------------ configuración
+# ------------------------------------------------------------------ settings
 
 def _config_path() -> Path:
     return Path(settings["data_dir"]) / "gemini.json"
@@ -74,7 +74,7 @@ def _write(path: Path, data: dict) -> None:
     tmp = path.with_name(path.name + ".tmp")
     tmp.write_text(json.dumps(data), encoding="utf-8")
     try:
-        os.chmod(tmp, 0o600)  # la clave no debe ser legible por otros usuarios del NAS
+        os.chmod(tmp, 0o600)  # the key must not be readable by other NAS users
     except OSError:
         pass
     tmp.replace(path)
@@ -95,7 +95,7 @@ def configured() -> bool:
 
 def save_config(api_key: Optional[str] = None, model: Optional[str] = None,
                 max_calls_per_day: Optional[int] = None) -> dict:
-    """Actualiza los campos indicados; api_key vacía borra la clave. ValueError con el código si no es válido."""
+    """Update the given fields; an empty api_key clears the key. ValueError with the code if invalid."""
     data = config()
     if api_key is not None:
         api_key = api_key.strip()
@@ -147,12 +147,12 @@ def _check_status(resp: httpx.Response) -> None:
     if resp.status_code >= 500 or resp.status_code in (408, 409):
         raise SubjectError("gemini_unreachable")
     if resp.status_code != 200:
-        # 400: la petición o la imagen no le gustan al modelo; propio de esta foto
+        # 400: the model rejects the request or the image; specific to this photo
         raise SubjectError("gemini_response_invalid")
 
 
 def test_connection(client: Optional[httpx.Client] = None) -> None:
-    """Comprueba la clave y el modelo sin enviar fotos (consulta los datos del modelo)."""
+    """Check the key and model without sending photos (queries the model metadata)."""
     cfg = config()
     if not cfg["api_key"]:
         raise SubjectError("gemini_key_missing")
@@ -169,22 +169,22 @@ def test_connection(client: Optional[httpx.Client] = None) -> None:
 
 
 def _payload(path: Path) -> str:
-    """JPEG reducido y orientado, sin metadatos, en base64."""
+    """Reduced, oriented JPEG without metadata, in base64."""
     with heavy():
         img = open_reduced(path, (SEND_SIZE, SEND_SIZE))
         try:
             img.thumbnail((SEND_SIZE, SEND_SIZE), PILImage.LANCZOS)
             buf = io.BytesIO()
-            img.save(buf, "JPEG", quality=80)  # sin exif=: no se copia ningún metadato
+            img.save(buf, "JPEG", quality=80)  # no exif=: no metadata is copied
         finally:
             img.close()
     return base64.b64encode(buf.getvalue()).decode("ascii")
 
 
 def parse_boxes(data: dict) -> Optional[list]:
-    """Unión de los recuadros como [x0, y0, x1, y1] en fracciones de la foto, o None si no hay sujeto.
+    """Union of the boxes as [x0, y0, x1, y1] in fractions of the photo, or None if there is no subject.
 
-    SubjectError("gemini_response_invalid") si la respuesta no tiene el formato pedido."""
+    SubjectError("gemini_response_invalid") if the response does not have the requested format."""
     try:
         text = "".join(part.get("text", "") for part in data["candidates"][0]["content"]["parts"])
         subjects = json.loads(text)["subjects"]
@@ -205,7 +205,7 @@ def parse_boxes(data: dict) -> Optional[list]:
 
 
 def detect(path: Path, client: Optional[httpx.Client] = None) -> Optional[list]:
-    """Recuadro del sujeto principal de la foto ([x0, y0, x1, y1] en 0-1) o None si no tiene."""
+    """Box of the photo's main subject ([x0, y0, x1, y1] in 0-1) or None if there is none."""
     cfg = config()
     if not cfg["api_key"]:
         raise SubjectError("gemini_key_missing")

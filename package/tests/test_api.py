@@ -11,7 +11,7 @@ from tests.test_source_local import MediaRootMixin, make_image
 
 class HealthApiTest(unittest.TestCase):
     def setUp(self):
-        # Sin "with": no se disparan los eventos de arranque (el scheduler no corre en tests)
+        # Without "with": startup events do not fire (the scheduler does not run in tests)
         self.client = TestClient(app)
 
     def test_health(self):

@@ -1,7 +1,7 @@
 {
   "name": "Frame Art",
   "short_name": "FrameArt",
-  "description": "Álbumes del NAS para Samsung The Frame",
+  "description": "NAS photo albums for Samsung The Frame",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

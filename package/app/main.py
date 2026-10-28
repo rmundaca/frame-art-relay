@@ -28,7 +28,7 @@ STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 
 class RevalidatedStaticFiles(StaticFiles):
-    """Obliga al navegador a revalidar (304 si no cambió): tras actualizar el paquete no quedan JS/CSS viejos."""
+    """Force the browser to revalidate (304 if unchanged): no stale JS/CSS after a package update."""
 
     def file_response(self, *args, **kwargs):
         response = super().file_response(*args, **kwargs)

@@ -1,10 +1,10 @@
-"""Cliente de Samsung The Frame (API de arte 0.97, modelo 2019) sobre samsungtvws.
+"""Samsung The Frame client (art API 0.97, 2019 model) on top of samsungtvws.
 
-Particularidades verificadas en la fase 0 (ver PLAN.md):
-- El canal de arte no siempre envía ms.channel.ready: no se espera.
-- El TV ignora en silencio peticiones desconocidas y sus ping impiden que salte el timeout del socket:
-  cada operación lleva un vigilante que cierra el socket al vencer el plazo.
-- El TV atiende un solo canal de arte: las operaciones de un mismo TV se serializan con un RLock.
+Quirks verified against a real TV:
+- The art channel does not always send ms.channel.ready: it is not awaited.
+- The TV silently ignores unknown requests and its pings keep the socket timeout from firing:
+  every operation has a watchdog that closes the socket when the deadline passes.
+- The TV serves a single art channel: operations on the same TV are serialized with an RLock.
 """
 import logging
 import socket
@@ -21,14 +21,14 @@ from samsungtvws.connection import SamsungTVWSConnection
 from app.core.config import settings
 
 logger = logging.getLogger("tv")
-# Certificado autofirmado del TV en el puerto 8002
+# The TV's self-signed certificate on port 8002
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 MY_PHOTOS = "MY-C0002"
 CLIENT_NAME = "FrameArt"
 MATTES = ["none"] + [f"{style}_{color}" for style in ("modern", "shadowbox") for color in (
     "black", "neutral", "antique", "warm", "polar", "sand", "seafoam", "sage", "burgandy", "navy")]
-# Intervalos de rotación (minutos) que acepta el modelo 2019; los menores de NATIVE_MIN los rota la app
+# Rotation intervals (minutes) the 2019 model accepts; those below NATIVE_MIN are rotated by the app
 NATIVE_INTERVALS = [10, 30, 60, 360, 720, 1440, 4320]
 APP_INTERVALS = [1, 2, 3, 5]
 INTERVALS = APP_INTERVALS + NATIVE_INTERVALS
@@ -40,7 +40,7 @@ _locks_guard = threading.Lock()
 
 
 class TvError(Exception):
-    """Error con código estable para la API (tv_unavailable, tv_busy, tv_not_paired, tv_timeout)."""
+    """Error with a stable code for the API (tv_unavailable, tv_busy, tv_not_paired, tv_timeout)."""
 
     def __init__(self, code: str):
         super().__init__(code)
@@ -57,7 +57,7 @@ class _FrameArt(SamsungTVArt):
         return SamsungTVWSConnection.open(self)
 
     def get_api_version(self):
-        # El firmware 2019 no responde a "api_version" (la petición nueva que la librería prueba primero)
+        # The 2019 firmware does not answer "api_version" (the newer request the library tries first)
         data = self._request_json("get_api_version")
         return data.get("version", data) if isinstance(data, dict) else data
 
@@ -74,7 +74,7 @@ class TvClient:
 
     @contextmanager
     def session(self, wait: float = 60):
-        """Reserva el TV para una secuencia de operaciones."""
+        """Reserve the TV for a sequence of operations."""
         lock = _lock_for(self.host)
         if not lock.acquire(timeout=wait):
             raise TvError("tv_busy")
@@ -133,10 +133,10 @@ class TvClient:
         return resp.json().get("device", {})
 
     def state(self) -> str:
-        """offline | standby | art | tv (en uso o arrancando) | on (sin emparejar).
+        """offline | standby | art | tv (in use or booting) | on (not paired).
 
-        Con la pantalla apagada por el sensor de movimiento REST no responde y el TV cuenta como offline. No se
-        prueba el canal de arte: solo con conectarse a él la pantalla se enciende (fase 11)."""
+        With the screen turned off by the motion sensor REST does not answer and the TV counts as offline. The art
+        channel is not probed: merely connecting to it turns the screen on."""
         try:
             power = self.rest_info().get("PowerState", "on")
         except (requests.RequestException, ValueError):
@@ -156,7 +156,7 @@ class TvClient:
     # ---------------------------------------------------------- operaciones
 
     def pair(self) -> bool:
-        """Abre el canal de control remoto: el TV (en modo TV) pide permiso y entrega el token."""
+        """Open the remote control channel: the TV (in TV mode) asks for permission and hands over the token."""
         self.token_file.parent.mkdir(parents=True, exist_ok=True)
         with self.session():
             remote = SamsungTVWS(host=self.host, port=8002, token_file=str(self.token_file),
@@ -164,7 +164,7 @@ class TvClient:
             try:
                 remote.open()
             except Exception as exc:  # noqa: BLE001
-                logger.info("Emparejamiento con %s falló: %s", self.host, exc)
+                logger.info("Pairing with %s failed: %s", self.host, exc)
                 return False
             finally:
                 try:
@@ -198,18 +198,18 @@ class TvClient:
             try:
                 art.set_auto_rotation_status(duration=minutes, type=shuffle, category_id=MY_PHOTOS)
             except exceptions.ResponseError:
-                # Firmwares más nuevos solo conocen el nombre actual del comando
+                # Newer firmwares only know the current command name
                 art.set_slideshow_status(duration=minutes, type=shuffle, category_id=MY_PHOTOS)
 
     def current(self) -> str:
-        """content_id de la imagen que muestra el TV."""
+        """content_id of the image the TV is showing."""
         with self._art() as art:
             return str((art.get_current() or {}).get("content_id") or "")
 
     def select(self, content_id: str) -> None:
-        """Muestra una imagen. Enciende la pantalla aunque el sensor la haya apagado y desactiva el slideshow.
+        """Show an image. Turns the screen on even if the sensor turned it off, and disables the slideshow.
 
-        A veces el TV aplica el cambio sin responder: ante un tiempo agotado se confirma con la imagen actual."""
+        Sometimes the TV applies the change without answering: on a timeout it is confirmed with the current image."""
         try:
             with self._art(deadline=SELECT_DEADLINE) as art:
                 art.select_image(content_id, show=True)

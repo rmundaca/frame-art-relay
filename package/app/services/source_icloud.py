@@ -1,7 +1,7 @@
-"""Álbumes públicos de iCloud: lectura sin credenciales vía Shared Streams o CloudKit.
+"""Public iCloud albums: read without credentials via Shared Streams or CloudKit.
 
-Flujo: POST <base>/webstream (lista de fotos y derivados) -> POST <base>/webasseturls (URLs de descarga).
-Si el álbum vive en otra partición, Apple responde 330 con el host correcto en "X-Apple-MMe-Host".
+Flow: POST <base>/webstream (photo list and derivatives) -> POST <base>/webasseturls (download URLs).
+If the album lives on another partition, Apple answers 330 with the right host in "X-Apple-MMe-Host".
 """
 import hashlib
 import json
@@ -20,7 +20,7 @@ logger = logging.getLogger("icloud")
 _TOKEN = re.compile(r"#([A-Za-z0-9]{10,40})")
 _KEY = re.compile(r"^[A-Za-z0-9\-]{1,64}\.jpg$")
 _BASE62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-# Solo se habla con Apple: evita que una respuesta manipulada lleve las descargas a otro host (SSRF)
+# Only talk to Apple: stops a tampered response from pointing downloads at another host (SSRF)
 _ALLOWED_SUFFIXES = (".icloud.com", ".icloud-content.com")
 _HEADERS = {"Content-Type": "text/plain", "Origin": "https://www.icloud.com"}
 _URL_BATCH = 25
@@ -30,7 +30,7 @@ _CLOUD_PRIVATE_ERRORS = ("NOT_FOUND", "ACCESS_DENIED", "AUTHENTICATION_REQUIRED"
 
 
 class ICloudError(Exception):
-    """Código estable: invalid_icloud_url, icloud_album_not_public, icloud_unreachable."""
+    """Stable code: invalid_icloud_url, icloud_album_not_public, icloud_unreachable."""
 
 
 def parse_token(url: str) -> str:
@@ -73,12 +73,12 @@ def _cloud_post(client: httpx.Client, url: str, body: dict, params: dict) -> dic
     try:
         data = resp.json()
     except ValueError:
-        logger.warning("Respuesta JSON de CloudKit no valida")
+        logger.warning("Invalid CloudKit JSON response")
         raise ICloudError("icloud_unreachable") from None
     if isinstance(data, dict) and data.get("serverErrorCode") in _CLOUD_PRIVATE_ERRORS:
         raise ICloudError("icloud_album_not_public")
     if not isinstance(data, dict) or data.get("serverErrorCode"):
-        logger.warning("Respuesta de CloudKit no valida")
+        logger.warning("Invalid CloudKit response")
         raise ICloudError("icloud_unreachable")
     return data
 
@@ -106,7 +106,7 @@ def _resolve_cloud(client: httpx.Client, token: str) -> tuple:
         name = result["share"]["fields"].get("cloudkit.title", {}).get("value") or ""
         return name, base, params, zone
     except (AttributeError, KeyError, IndexError, TypeError, ValueError):
-        logger.warning("Metadatos de album CloudKit no validos")
+        logger.warning("Invalid CloudKit album metadata")
         raise ICloudError("icloud_unreachable") from None
 
 
@@ -175,7 +175,7 @@ def _cloud_photos(client: httpx.Client, token: str, limit: int) -> tuple:
                     break
         return name, wanted
     except (AttributeError, KeyError, IndexError, TypeError, ValueError):
-        logger.warning("Lista de fotos CloudKit no valida")
+        logger.warning("Invalid CloudKit photo list")
         raise ICloudError("icloud_unreachable") from None
 
 
@@ -210,7 +210,7 @@ def _post(client: httpx.Client, url: str, body: dict) -> httpx.Response:
 
 
 def fetch_stream(client: httpx.Client, token: str) -> tuple:
-    """(base, nombre del álbum, fotos) siguiendo como máximo una redirección 330."""
+    """(base, album name, photos) following at most one 330 redirect."""
     base = base_url(token)
     for _ in range(2):
         resp = _post(client, base + "webstream", {"streamCtag": None})
@@ -239,7 +239,7 @@ def best_derivative(photo: dict):
 
 
 def fetch_urls(client: httpx.Client, base: str, guids: list) -> dict:
-    """checksum -> URL de descarga."""
+    """checksum -> download URL."""
     urls = {}
     for i in range(0, len(guids), _URL_BATCH):
         resp = _post(client, base + "webasseturls", {"photoGuids": guids[i:i + _URL_BATCH]})
@@ -285,7 +285,7 @@ def _download(client: httpx.Client, url: str, dest: Path) -> None:
 
 
 def refresh(source_id: int, url: str, client: httpx.Client = None) -> tuple:
-    """Descarga las fotos nuevas, borra las que ya no están y devuelve (nombre, [(clave, tamaño, mtime)])."""
+    """Download new photos, delete the ones that are gone and return (name, [(key, size, mtime)])."""
     url = canonical_url(url)
     token = parse_token(url)
     cloud = urlsplit(url).hostname == "photos.icloud.com"

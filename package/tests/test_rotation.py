@@ -1,4 +1,4 @@
-"""Fase 11.2: rotación por la app para intervalos menores de 10 minutos."""
+"""App-driven rotation for intervals shorter than 10 minutes."""
 import random
 import unittest
 from datetime import timedelta
@@ -56,7 +56,7 @@ class DeckTest(unittest.TestCase):
                 deck.current = next_content(deck, items, rng)
                 round_.append(deck.current)
             self.assertEqual(sorted(round_), items)
-        # Al barajar de nuevo nunca se repite la imagen que se está viendo
+        # Reshuffling never repeats the image on screen
         for _ in range(50):
             last = deck.current
             deck.pending = []
@@ -92,16 +92,16 @@ class SleepStateTest(unittest.TestCase):
         return client
 
     def test_rest_down_never_touches_the_art_channel(self):
-        # Conectarse al canal de arte enciende la pantalla apagada por el sensor
+        # Connecting to the art channel turns on a screen the sensor turned off
         client = self.client("on")
-        client._art = lambda deadline=None: self.fail("no debe abrir el canal de arte")
+        client._art = lambda deadline=None: self.fail("must not open the art channel")
         with patch.object(TvClient, "rest_info", side_effect=requests.ConnectionError()):
             self.assertEqual(client.state(), "offline")
 
     def test_select_timeout_is_confirmed_with_current_image(self):
         client = self.client(TvError("tv_timeout"))
         with patch.object(TvClient, "current", return_value="MY_F0002"):
-            client.select("MY_F0002")  # el TV aplicó el cambio sin responder
+            client.select("MY_F0002")  # the TV applied the change without answering
             with self.assertRaises(TvError) as ctx:
                 client.select("MY_F0003")
         self.assertEqual(ctx.exception.code, "tv_timeout")
@@ -117,7 +117,7 @@ class RotationTickTest(MediaRootMixin, unittest.TestCase):
         for name in ("a.jpg", "b.jpg", "c.jpg"):
             make_image(self.root / name)
         self.db = SessionLocal()
-        self.album = Album(name="Rápido", interval=2, shuffle=False)
+        self.album = Album(name="Fast", interval=2, shuffle=False)
         self.other = Album(name="Lento", interval=30, shuffle=False)
         self.tv = Tv(name="Frame", host="192.0.2.11", mac="D4:9D:C0:00:00:02", paired=True)
         self.db.add_all([self.album, self.other, self.tv])
@@ -155,7 +155,7 @@ class RotationTickTest(MediaRootMixin, unittest.TestCase):
 
     def test_rotates_only_album_photos_on_schedule(self):
         self.supervise()
-        self.assertFalse(self.rotate(0))  # el reloj empieza al entrar en la franja
+        self.assertFalse(self.rotate(0))  # the clock starts when entering the slot
         self.assertFalse(self.rotate(1))
         self.assertTrue(self.rotate(2))
         self.assertFalse(self.rotate(3))
@@ -164,7 +164,7 @@ class RotationTickTest(MediaRootMixin, unittest.TestCase):
         self.assertTrue(self.rotate(8))
         own = self.own_ids()
         self.assertEqual(self.client.selected, own + own[:1])
-        self.assertNotIn("MY_F9999", self.client.selected)  # la foto ajena no entra en la rotación
+        self.assertNotIn("MY_F9999", self.client.selected)  # the foreign photo does not enter the rotation
 
     def test_screen_off_or_in_use_is_not_touched(self):
         self.supervise()
@@ -174,7 +174,7 @@ class RotationTickTest(MediaRootMixin, unittest.TestCase):
             self.assertFalse(self.rotate(5))
         self.assertEqual(self.client.selected, [])
         self.client.state_value = "art"
-        self.assertTrue(self.rotate(5))  # se recupera en cuanto la pantalla vuelve a encenderse
+        self.assertTrue(self.rotate(5))  # recovers as soon as the screen comes back on
 
     def test_busy_channel_waits_without_error(self):
         self.supervise()

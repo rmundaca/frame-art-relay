@@ -9,14 +9,14 @@ const I18N = {
         tabAlbums: 'Álbumes', tabTvs: 'Televisores', tabSchedule: 'Horario',
         settings: 'Ajustes', close: 'Cerrar', cancel: 'Cancelar', save: 'Guardar', delete: 'Eliminar',
         edit: 'Editar', back: 'Volver', saved: 'Cambios guardados', deleted: 'Eliminado',
-        // Álbumes
+        // Albums
         emptyAlbumsTitle: 'Aún no hay álbumes', emptyAlbumsText: 'Crea álbumes con imágenes de carpetas del NAS o de álbumes compartidos de iCloud.',
-        newAlbum: 'Nuevo álbum', name: 'Nombre', interval: 'Cambiar imagen cada', order: 'Orden',
+        newAlbum: 'Nuevo álbum', name: 'Nombre', interval: 'Cambiar cada', order: 'Orden',
         shuffle: 'Aleatorio', sequential: 'Secuencial', matte: 'Marco',
+        rotation: 'Rotación', display: 'Presentación', help: 'Ayuda',
         albumMeta: '{n} de {total} imágenes', noSources: 'Sin carpetas',
         sources: 'Carpetas', addFolder: 'Añadir carpeta', subfolders: 'con subcarpetas',
         images: 'Imágenes', rescan: 'Reescanear', rescanned: 'Carpetas reescaneadas',
-        imagesHint: 'Toca una imagen para excluirla o incluirla. Máximo {max} por álbum.',
         noImages: 'No hay imágenes en las carpetas del álbum.',
         deleteAlbum: 'Eliminar álbum', deleteAlbumMsg: 'Se quitará de todas las franjas. Las fotos del NAS no se tocan.',
         deleteSource: 'Quitar carpeta', deleteSourceMsg: 'Sus imágenes dejarán de formar parte del álbum.',
@@ -26,29 +26,32 @@ const I18N = {
         addIcloud: 'Añadir iCloud', icloudTitle: 'Álbum compartido de iCloud', icloudUrl: 'Enlace del álbum',
         icloudHelp: 'En Fotos, abre las opciones de compartir del álbum, permite "Cualquier persona con el enlace" o activa "Sitio web público" y copia el enlace.',
         icloudAdded: 'Descargando las fotos de iCloud...', downloading: 'Descargando...',
-        composition: 'Composición automática',
-        compositionHint: 'Agrupa dos o tres fotos en una sola imagen, como una hoja de álbum. Las fotos utilizadas no se muestran también por separado.',
-        dateStamp: 'Fecha en las fotos de iCloud',
-        dateStampHint: 'Añade abajo a la derecha de cada foto de iCloud la fecha en que se tomó (AAAA-MM-DD). Las fotos de carpetas del NAS no cambian.',
-        appIntervalHint: 'Con 1 a 5 minutos cambia las imágenes la app, no el TV: solo con la pantalla encendida y solo con las fotos de este álbum.',
+        composition: 'Composiciones',
+        dateStamp: 'Fecha (iCloud)',
         singleFit: 'Fotos sueltas',
-        fitCrop: 'Recortar a pantalla completa',
-        fitWhole: 'Mostrar completas',
-        singleFitHint: 'Las verticales y panorámicas que no van en una composición se muestran completas sobre el fondo en lugar de recortarse. Las horizontales que casi llenan la pantalla se siguen recortando.',
+        fitCrop: 'Llenar pantalla',
+        fitWhole: 'Completas',
         background: 'Fondo',
         bgPaper: 'Papel',
         bgBlur: 'Desenfocado',
-        backgroundHint: 'Color del espacio libre en las composiciones y en las fotos completas. Desenfocado usa las propias fotos.',
-        subjectDetection: 'Detectar el sujeto con Gemini',
-        subjectHint: 'Al recortar, conserva a las personas y animales de cada foto. Envía a Google una copia reducida de cada foto del álbum, sin ubicación ni otros metadatos.',
-        subjectNeedsKey: 'Configura la clave de Gemini en Ajustes para activarlo.',
+        subjectDetection: 'Recorte inteligente',
+        subjectNeedsKey: 'El recorte inteligente necesita una clave de Gemini en Ajustes.',
         outputMeta: '{photos} fotos · {total} imágenes para el TV',
         compositions: 'Composiciones', regenerate: 'Regenerar', regenerating: 'Generando composiciones...',
-        compositionsHint: 'Imágenes generadas tal como llegan al TV. Toca una para ver sus fotos.',
         composeWaiting: 'Agrupando las fotos...', composePending: 'Preparando {n} composiciones...',
         noCompositions: 'Ninguna foto tiene una combinación adecuada: todas se muestran por separado.',
         originals: 'Fotos originales',
-        originalsHint: 'Toca una foto para excluirla o incluirla. Las composiciones se rehacen solas.',
+        albumHelp: [
+            ['Cambiar cada', 'Cada cuánto cambia la imagen. Desde 10 minutos usa el pase de diapositivas del TV. Con 1 a 5 minutos la cambia la app, solo con la pantalla encendida.'],
+            ['Orden', 'Aleatorio baraja las imágenes; Secuencial las muestra por nombre de archivo.'],
+            ['Fotos sueltas', 'Llenar pantalla recorta cada foto a 16:9. Completas muestra enteras las verticales y panorámicas sobre el fondo; las horizontales que casi llenan la pantalla se siguen recortando.'],
+            ['Composiciones', 'Agrupa dos o tres fotos en una sola imagen, como una hoja de álbum. Esas fotos ya no se muestran por separado. Al borrar una composición en la galería del TV, sus fotos se excluyen del álbum.'],
+            ['Fecha (iCloud)', 'Añade abajo a la derecha la fecha en que se tomó cada foto de iCloud (AAAA-MM-DD). Las fotos del NAS no cambian.'],
+            ['Recorte inteligente', 'Pregunta a Gemini dónde están las personas y animales para no cortarlos. Envía a Google una copia reducida de cada foto, sin ubicación ni metadatos. Requiere una clave en Ajustes.'],
+            ['Fondo', 'Rellena el espacio libre de las composiciones y de las fotos completas. Desenfocado usa la propia foto.'],
+            ['Marco', 'Paspartú que dibuja el TV alrededor de la imagen.'],
+            ['Imágenes', 'Toca una imagen para excluirla o incluirla (máximo {max} por álbum). Las composiciones se rehacen solas; toca una para ver sus fotos.'],
+        ],
         page: 'Composición', pageMembers: 'Fotos de esta composición', openFull: 'Ver a tamaño real',
         pageStatus: { pending: 'Preparando', updating: 'Actualizando', error: 'Error' },
         matteStyle: { none: 'Sin marco', modern: 'Moderno', shadowbox: 'Caja' },
@@ -57,7 +60,7 @@ const I18N = {
             seafoam: 'espuma', sage: 'salvia', burgandy: 'burdeos', navy: 'marino',
         },
         minutes: '{n} min', hours: '{n} h', oneDay: '1 día', days: '{n} días',
-        // Televisores
+        // TVs
         emptyTvsTitle: 'Aún no hay televisores', emptyTvsText: 'Añade tu Samsung The Frame por su IP.',
         newTv: 'Añadir televisor', host: 'Dirección IP', model: 'Modelo', mac: 'MAC', state: 'Estado',
         tvAdded: 'Televisor añadido',
@@ -79,7 +82,7 @@ const I18N = {
         deletePhotosMsg: 'Se borrarán {n} fotos del televisor.', photosDeleted: '{n} fotos borradas',
         deletePagesMsg: 'Incluye {n} composiciones: todas sus fotos quedarán excluidas del álbum para que no se vuelvan a generar. Los archivos originales no se borran.',
         loadingGallery: 'Leyendo el TV...',
-        // Horario
+        // Schedule
         emptyScheduleTitle: 'Sin franjas horarias', emptyScheduleText: 'Define qué álbum se muestra en cada TV y cuándo.',
         needTvAndAlbum: 'Primero añade un televisor y un álbum.',
         newSlot: 'Añadir franja', editSlot: 'Franja horaria', tv: 'Televisor', album: 'Álbum', daysLabel: 'Días',
@@ -88,15 +91,18 @@ const I18N = {
         everyDay: 'Todos los días', weekdays: 'Lunes a viernes', weekends: 'Fines de semana',
         dayShort: ['L', 'M', 'X', 'J', 'V', 'S', 'D'],
         deleteSlot: 'Eliminar franja', deleteSlotMsg: 'El TV dejará de mostrar este álbum en ese horario.',
-        // Ajustes
+        // Settings
         theme: 'Tema', themeOpt: { system: 'Sistema', light: 'Claro', dark: 'Oscuro' },
-        themeHint: 'Se guarda en este dispositivo.',
         language: 'Idioma', version: 'Versión {v}',
         aiTitle: 'Gemini', aiKey: 'Clave de la API', aiModel: 'Modelo', aiLimit: 'Consultas por día como máximo',
         aiKeySet: 'Configurada (termina en {hint})', aiKeyNone: 'Sin configurar', aiUsage: '{n} consultas hoy',
         aiKeyPlaceholder: 'Pega la clave para cambiarla', aiTest: 'Probar', aiTestOk: 'Gemini responde correctamente.',
         aiRemove: 'Quitar la clave',
-        aiHint: 'Se usa solo en los álbumes con «Detectar el sujeto con Gemini». La clave se guarda en el NAS y no se vuelve a mostrar.',
+        settingsHelp: [
+            ['Tema e idioma', 'Se guardan solo en este dispositivo.'],
+            ['Carpetas permitidas', 'Carpetas del NAS que se pueden añadir a los álbumes. Se definen en config.yaml (media.roots).'],
+            ['Gemini', 'Solo lo usan los álbumes con Recorte inteligente. La clave se guarda en el NAS y no se vuelve a mostrar. El límite diario evita costes inesperados.'],
+        ],
         err: {
             network: 'No se pudo contactar con el servidor.',
             not_found: 'Ya no existe.',
@@ -145,12 +151,12 @@ const I18N = {
         settings: 'Settings', close: 'Close', cancel: 'Cancel', save: 'Save', delete: 'Delete',
         edit: 'Edit', back: 'Back', saved: 'Changes saved', deleted: 'Deleted',
         emptyAlbumsTitle: 'No albums yet', emptyAlbumsText: 'Create albums with images from NAS folders or iCloud shared albums.',
-        newAlbum: 'New album', name: 'Name', interval: 'Change image every', order: 'Order',
+        newAlbum: 'New album', name: 'Name', interval: 'Change every', order: 'Order',
         shuffle: 'Shuffle', sequential: 'In order', matte: 'Matte',
+        rotation: 'Rotation', display: 'Display', help: 'Help',
         albumMeta: '{n} of {total} images', noSources: 'No folders',
         sources: 'Folders', addFolder: 'Add folder', subfolders: 'with subfolders',
         images: 'Images', rescan: 'Rescan', rescanned: 'Folders rescanned',
-        imagesHint: 'Tap an image to exclude or include it. Up to {max} per album.',
         noImages: 'There are no images in the album folders.',
         deleteAlbum: 'Delete album', deleteAlbumMsg: 'It will be removed from every time slot. NAS photos are not touched.',
         deleteSource: 'Remove folder', deleteSourceMsg: 'Its images will no longer be part of the album.',
@@ -160,29 +166,32 @@ const I18N = {
         addIcloud: 'Add iCloud', icloudTitle: 'iCloud shared album', icloudUrl: 'Album link',
         icloudHelp: 'In Photos, open the album sharing options, allow "Anyone with the Link" or turn on "Public Website", and copy the link.',
         icloudAdded: 'Downloading photos from iCloud...', downloading: 'Downloading...',
-        composition: 'Automatic layouts',
-        compositionHint: 'Combines two or three photos into a single image, like an album page. Photos used in a layout are not shown on their own as well.',
-        dateStamp: 'Date on iCloud photos',
-        dateStampHint: 'Adds the date each iCloud photo was taken (YYYY-MM-DD) to its lower right corner. Photos from NAS folders are not changed.',
-        appIntervalHint: 'With 1 to 5 minutes the app changes the images instead of the TV: only while the screen is on, and only with this album’s photos.',
+        composition: 'Layouts',
+        dateStamp: 'Date (iCloud)',
         singleFit: 'Single photos',
-        fitCrop: 'Crop to full screen',
-        fitWhole: 'Show whole',
-        singleFitHint: 'Portrait and panoramic photos that are not in a layout are shown whole over the background instead of being cropped. Landscape photos that almost fill the screen are still cropped.',
+        fitCrop: 'Fill screen',
+        fitWhole: 'Whole',
         background: 'Background',
         bgPaper: 'Paper',
         bgBlur: 'Blurred',
-        backgroundHint: 'Fills the free space in layouts and in photos shown whole. Blurred uses the photos themselves.',
-        subjectDetection: 'Detect the subject with Gemini',
-        subjectHint: 'Keeps the people and animals in each photo when cropping. Sends Google a reduced copy of every photo in the album, without location or other metadata.',
-        subjectNeedsKey: 'Set up the Gemini key in Settings to turn this on.',
+        subjectDetection: 'Smart crop',
+        subjectNeedsKey: 'Smart crop needs a Gemini key in Settings.',
         outputMeta: '{photos} photos · {total} images for the TV',
         compositions: 'Layouts', regenerate: 'Regenerate', regenerating: 'Generating layouts...',
-        compositionsHint: 'Images generated exactly as the TV receives them. Tap one to see its photos.',
         composeWaiting: 'Grouping photos...', composePending: 'Preparing {n} layouts...',
         noCompositions: 'No photos have a suitable combination: all of them are shown on their own.',
         originals: 'Original photos',
-        originalsHint: 'Tap a photo to exclude or include it. Layouts are rebuilt automatically.',
+        albumHelp: [
+            ['Change every', 'How often the image changes. From 10 minutes up the TV runs its own slideshow. With 1 to 5 minutes the app changes it, only while the screen is on.'],
+            ['Order', 'Shuffle mixes the images; In order shows them by file name.'],
+            ['Single photos', 'Fill screen crops each photo to 16:9. Whole shows portrait and panoramic photos uncropped over the background; landscape photos that almost fill the screen are still cropped.'],
+            ['Layouts', 'Combines two or three photos into one image, like an album page. Those photos are no longer shown on their own. Deleting a layout from the TV gallery excludes its photos from the album.'],
+            ['Date (iCloud)', 'Adds the date each iCloud photo was taken (YYYY-MM-DD) to its lower right corner. NAS photos are not changed.'],
+            ['Smart crop', 'Asks Gemini where the people and animals are so crops keep them. Sends Google a reduced copy of each photo, without location or metadata. Needs a key in Settings.'],
+            ['Background', 'Fills the free space in layouts and in photos shown whole. Blurred uses the photo itself.'],
+            ['Matte', 'Mat border the TV draws around the image.'],
+            ['Images', 'Tap an image to exclude or include it (up to {max} per album). Layouts are rebuilt automatically; tap one to see its photos.'],
+        ],
         page: 'Layout', pageMembers: 'Photos in this layout', openFull: 'View full size',
         pageStatus: { pending: 'Preparing', updating: 'Updating', error: 'Error' },
         matteStyle: { none: 'No matte', modern: 'Modern', shadowbox: 'Shadowbox' },
@@ -221,13 +230,16 @@ const I18N = {
         dayShort: ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'],
         deleteSlot: 'Delete slot', deleteSlotMsg: 'The TV will stop showing this album at that time.',
         theme: 'Theme', themeOpt: { system: 'System', light: 'Light', dark: 'Dark' },
-        themeHint: 'Saved on this device.',
         language: 'Language', version: 'Version {v}',
         aiTitle: 'Gemini', aiKey: 'API key', aiModel: 'Model', aiLimit: 'Maximum requests per day',
         aiKeySet: 'Set (ends in {hint})', aiKeyNone: 'Not set', aiUsage: '{n} requests today',
         aiKeyPlaceholder: 'Paste a key to change it', aiTest: 'Test', aiTestOk: 'Gemini is responding.',
         aiRemove: 'Remove key',
-        aiHint: 'Only used by albums with “Detect the subject with Gemini”. The key is stored on the NAS and never shown again.',
+        settingsHelp: [
+            ['Theme and language', 'Saved on this device only.'],
+            ['Allowed folders', 'NAS folders that can be added to albums. Set in config.yaml (media.roots).'],
+            ['Gemini', 'Only used by albums with Smart crop. The key is stored on the NAS and never shown again. The daily limit prevents unexpected costs.'],
+        ],
         err: {
             network: 'Could not reach the server.',
             not_found: 'It no longer exists.',
@@ -275,7 +287,7 @@ const STORE_PREFIX = 'fa_';
 const THEME_COLORS = { dark: '#0b0f19', light: '#eef1f6' };
 
 const S = {
-    lang: readStorage('lang') || (navigator.language || 'es').slice(0, 2),
+    lang: readStorage('lang') || (navigator.language || 'en').slice(0, 2),
     tab: 'albums',
     version: '',
     meta: { mattes: ['none'], intervals: [60], roots: [], max_images: 100 },
@@ -284,7 +296,7 @@ const S = {
     slots: [],
 };
 
-// Estado del formulario del sheet abierto (chips seleccionados, selección de la galería...)
+// State of the open sheet's form (selected chips, gallery selection...)
 let F = {};
 
 /* ------------------------------------------------------------- helpers */
@@ -297,11 +309,11 @@ function readStorage(key) {
 }
 
 function writeStorage(key, value) {
-    try { localStorage.setItem(STORE_PREFIX + key, value); } catch (e) { /* modo privado */ }
+    try { localStorage.setItem(STORE_PREFIX + key, value); } catch (e) { /* private mode */ }
 }
 
 function t(key, vars) {
-    const dict = I18N[S.lang] || I18N.es;
+    const dict = I18N[S.lang] || I18N.en;
     let value = key.split('.').reduce((o, k) => (o == null ? undefined : o[k]), dict);
     if (value === undefined) value = key;
     if (vars && typeof value === 'string') {
@@ -331,7 +343,7 @@ async function api(path, { method = 'GET', body } = {}) {
 }
 
 function errText(e) {
-    return (I18N[S.lang] || I18N.es).err[e && e.message] || t('err.generic');
+    return (I18N[S.lang] || I18N.en).err[e && e.message] || t('err.generic');
 }
 
 function toast(message, kind = 'ok') {
@@ -373,9 +385,12 @@ function stateTag(tv) {
     return `<span class="tag ${kind}">${esc(t(`states.${state}`))}</span>`;
 }
 
+function chip(name, value, label, on, disabled = false) {
+    return `<button type="button" class="chip${on ? ' on' : ''}" data-chip="${name}" data-value="${esc(value)}"${disabled ? ' disabled' : ''}>${esc(label)}</button>`;
+}
+
 function chips(name, options, selected) {
-    return `<div class="chips">${options.map(([value, label]) =>
-        `<button type="button" class="chip${selected(value) ? ' on' : ''}" data-chip="${name}" data-value="${esc(value)}">${esc(label)}</button>`).join('')}</div>`;
+    return `<div class="chips">${options.map(([value, label]) => chip(name, value, label, selected(value))).join('')}</div>`;
 }
 
 function busy(btn, on) {
@@ -395,15 +410,31 @@ const CLOUD = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" strok
 
 /* --------------------------------------------------------------- sheet */
 
-function openSheet(title, html, onMount) {
+// helpKey: I18N list of [term, explanation] shown by the sheet's help button
+function openSheet(title, html, onMount, helpKey) {
     const panel = $('.sheet-panel');
     panel.style.transform = '';
     panel.classList.remove('settle', 'dragging');
     $('#sheetTitle').textContent = title;
     $('#sheetBody').innerHTML = html;
+    const helpBtn = $('#sheetHelp');
+    helpBtn.hidden = !helpKey;
+    helpBtn.dataset.help = helpKey || '';
+    helpBtn.setAttribute('aria-expanded', 'false');
     $('#sheet').hidden = false;
     document.body.classList.add('no-scroll');
     if (onMount) onMount($('#sheetBody'));
+}
+
+function toggleHelp(btn) {
+    const open = $('#sheetHelpPanel');
+    btn.setAttribute('aria-expanded', String(!open));
+    if (open) { open.remove(); return; }
+    const vars = { max: S.meta.max_images };
+    $('#sheetBody').insertAdjacentHTML('afterbegin', `
+        <dl class="banner help" id="sheetHelpPanel">${t(btn.dataset.help).map(([term, text]) =>
+            `<dt>${esc(term)}</dt><dd>${esc(text.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? ''))}</dd>`).join('')}</dl>`);
+    $('.sheet-panel').scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function closeSheet() {
@@ -451,7 +482,7 @@ async function reload(...what) {
 }
 
 function setLang(lang, rerender = true) {
-    S.lang = I18N[lang] ? lang : 'es';
+    S.lang = I18N[lang] ? lang : 'en';
     document.documentElement.lang = S.lang;
     writeStorage('lang', S.lang);
     if (rerender) render();
@@ -470,6 +501,8 @@ function render() {
     const title = t(tab.title);
     $('#smallTitle').textContent = title;
     $('#settingsBtn').setAttribute('aria-label', t('settings'));
+    $('#sheetHelp').setAttribute('aria-label', t('help'));
+    $('#sheetClose').setAttribute('aria-label', t('close'));
     $$('#tabs .tab').forEach(b => {
         $('.tab-label', b).textContent = t(TABS[b.dataset.tab].title);
         b.setAttribute('aria-selected', String(b.dataset.tab === S.tab));
@@ -558,32 +591,38 @@ function renderSchedule() {
 
 /* --------------------------------------------------------------- albums */
 
+// Grouped as rotation (when) then display (how each image looks); explanations live in the help panel
 function albumFormHtml(a) {
+    const interval = S.meta.intervals.includes(F.interval) ? F.interval : S.meta.intervals[0];
     return `
         <label class="field"><span>${t('name')}</span>
             <input name="name" maxlength="60" autocomplete="off" value="${esc(a.name || '')}" required></label>
-        <div class="field"><span>${t('interval')}</span>
-            ${chips('interval', S.meta.intervals.map(m => [m, intervalLabel(m)]), v => Number(v) === F.interval)}
-            <p class="hint">${t('appIntervalHint')}</p></div>
-        <div class="field"><span>${t('order')}</span>
-            ${chips('shuffle', [['1', t('shuffle')], ['0', t('sequential')]], v => (v === '1') === F.shuffle)}</div>
+        <h3 class="form-group">${t('rotation')}</h3>
+        <div class="field-row">
+            <label class="field"><span>${t('interval')}</span>
+                <select name="interval">${S.meta.intervals.map(m =>
+                    `<option value="${m}"${m === interval ? ' selected' : ''}>${esc(intervalLabel(m))}</option>`).join('')}</select></label>
+            <div class="field"><span>${t('order')}</span>
+                ${chips('shuffle', [['1', t('shuffle')], ['0', t('sequential')]], v => (v === '1') === F.shuffle)}</div>
+        </div>
+        <h3 class="form-group">${t('display')}</h3>
+        <div class="field"><span>${t('singleFit')}</span>
+            ${chips('singleFit', [['crop', t('fitCrop')], ['fit', t('fitWhole')]], v => v === F.singleFit)}</div>
+        <div class="field"><div class="chips">
+            ${chip('composition', '1', t('composition'), F.composition)}
+            ${chip('dateStamp', '1', t('dateStamp'), F.dateStamp)}
+            ${chip('subject', '1', t('subjectDetection'), F.subject, !S.meta.ai && !F.subject)}</div>
+            ${S.meta.ai ? '' : `<p class="hint">${t('subjectNeedsKey')}</p>`}</div>
+        <div class="field" id="backgroundField"${showBackground() ? '' : ' hidden'}><span>${t('background')}</span>
+            ${chips('background', [['paper', t('bgPaper')], ['blur', t('bgBlur')]], v => v === F.background)}</div>
         <label class="field"><span>${t('matte')}</span>
             <select name="matte">${S.meta.mattes.map(m =>
-                `<option value="${esc(m)}"${m === (a.matte || 'none') ? ' selected' : ''}>${esc(matteLabel(m))}</option>`).join('')}</select></label>
-        <div class="field">${chips('composition', [['1', t('composition')]], () => F.composition)}
-            <p class="hint">${t('compositionHint')}</p></div>
-        <div class="field">${chips('dateStamp', [['1', t('dateStamp')]], () => F.dateStamp)}
-            <p class="hint">${t('dateStampHint')}</p></div>
-        <div class="field"><span>${t('singleFit')}</span>
-            ${chips('singleFit', [['crop', t('fitCrop')], ['fit', t('fitWhole')]], v => v === F.singleFit)}
-            <p class="hint">${t('singleFitHint')}</p></div>
-        <div class="field"><span>${t('background')}</span>
-            ${chips('background', [['paper', t('bgPaper')], ['blur', t('bgBlur')]], v => v === F.background)}
-            <p class="hint">${t('backgroundHint')}</p></div>
-        <div class="field"><div class="chips">
-            <button type="button" class="chip${F.subject ? ' on' : ''}" data-chip="subject" data-value="1"
-                ${S.meta.ai || F.subject ? '' : 'disabled'}>${t('subjectDetection')}</button></div>
-            <p class="hint">${t('subjectHint')}${S.meta.ai ? '' : ` ${t('subjectNeedsKey')}`}</p></div>`;
+                `<option value="${esc(m)}"${m === (a.matte || 'none') ? ' selected' : ''}>${esc(matteLabel(m))}</option>`).join('')}</select></label>`;
+}
+
+// The background only fills space left by layouts or by photos shown whole
+function showBackground() {
+    return F.composition || F.singleFit === 'fit';
 }
 
 function openNewAlbum() {
@@ -611,13 +650,13 @@ function openNewAlbum() {
                 busy(btn, false);
             }
         };
-    });
+    }, 'albumHelp');
 }
 
 function albumBody(form) {
     return {
         name: form.elements.name.value.trim(), matte: form.elements.matte.value,
-        interval: F.interval, shuffle: F.shuffle, composition_mode: F.composition ? 'auto' : 'off',
+        interval: Number(form.elements.interval.value), shuffle: F.shuffle, composition_mode: F.composition ? 'auto' : 'off',
         date_stamp: F.dateStamp, single_fit: F.singleFit, background: F.background, subject_detection: F.subject,
     };
 }
@@ -657,13 +696,11 @@ function openAlbum(id) {
         ${auto ? `<section class="set">
             <div class="set-row"><h3>${t('compositions')} <span class="muted" id="albumOutput">${esc(albumCount(a))}</span></h3>
                 <button type="button" class="btn small ghost" data-action="compose">${t('regenerate')}</button></div>
-            <p class="hint">${t('compositionsHint')}</p>
             <div id="albumPages" class="thumbs"><div class="small-loading"><span class="spinner"></span></div></div>
         </section>` : ''}
         <section class="set">
             <div class="set-row"><h3>${t(auto ? 'originals' : 'images')} <span class="muted">${esc(t('albumMeta', { n: a.included, total: a.images }))}</span></h3>
                 <button type="button" class="btn small ghost" data-action="rescan">${t('rescan')}</button></div>
-            <p class="hint">${esc(auto ? t('originalsHint') : t('imagesHint', { max: S.meta.max_images }))}</p>
             <div id="albumImages" class="thumbs"><div class="small-loading"><span class="spinner"></span></div></div>
         </section>
         <div class="actions spread">
@@ -688,7 +725,7 @@ function openAlbum(id) {
         };
         loadAlbumImages(a.id);
         if (auto) loadAlbumPages(a.id);
-    });
+    }, 'albumHelp');
 }
 
 function pageThumb(p) {
@@ -701,7 +738,7 @@ function pageThumb(p) {
         : '<span class="small-loading" style="min-height:100%"><span class="spinner"></span></span>'}${tag}</button>`;
 }
 
-// Las composiciones se generan en segundo plano: se consulta su estado sin bloquear la interfaz
+// Layouts are rendered in the background: poll their status without blocking the UI
 async function loadAlbumPages(albumId) {
     clearTimeout(F.pagesTimer);
     let pages, albums;
@@ -1147,7 +1184,7 @@ function setTheme(value) {
     if (value === 'light' || value === 'dark') document.documentElement.setAttribute('data-theme', value);
     else document.documentElement.removeAttribute('data-theme');
     writeStorage('theme', value);
-    // Color de la barra de estado del navegador acorde al tema
+    // Match the browser status bar color to the theme
     const dark = value === 'dark' || (value === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
     $$('meta[name="theme-color"]').forEach(m => m.setAttribute('content', dark ? THEME_COLORS.dark : THEME_COLORS.light));
 }
@@ -1159,7 +1196,6 @@ function openSettings() {
             <h3>${t('theme')}</h3>
             <div class="chips">${['system', 'light', 'dark'].map(v =>
                 `<button type="button" class="chip${v === theme ? ' on' : ''}" data-theme-opt="${v}">${t(`themeOpt.${v}`)}</button>`).join('')}</div>
-            <p class="hint">${t('themeHint')}</p>
         </section>
         <section class="set">
             <h3>${t('language')}</h3>
@@ -1172,7 +1208,7 @@ function openSettings() {
         </section>
         <section class="set" id="aiBox"><h3>${t('aiTitle')}</h3>
             <div class="small-loading"><span class="spinner"></span></div></section>
-        <p class="hint">${esc(t('version', { v: S.version || '–' }))}</p>`, () => loadAiSettings());
+        <p class="hint">${esc(t('version', { v: S.version || '–' }))}</p>`, () => loadAiSettings(), 'settingsHelp');
 }
 
 async function loadAiSettings() {
@@ -1198,7 +1234,6 @@ async function loadAiSettings() {
                 <span class="muted">· ${esc(t('aiUsage', { n: ai.calls_today }))}</span></span>
                 <input name="max_calls_per_day" type="number" min="1" max="100000" inputmode="numeric"
                     value="${esc(ai.max_calls_per_day)}"></label>
-            <p class="hint">${t('aiHint')}</p>
             <div class="actions">
                 ${ai.configured ? `<button type="button" class="btn ghost danger-text" id="aiRemove">${t('aiRemove')}</button>` : ''}
                 ${ai.configured ? `<button type="button" class="btn ghost" id="aiTest">${t('aiTest')}</button>` : ''}
@@ -1247,8 +1282,7 @@ async function loadAiSettings() {
 function onChip(chip) {
     const { chip: name, value } = chip.dataset;
     const group = chip.parentElement;
-    if (name === 'interval') F.interval = Number(value);
-    else if (name === 'shuffle') F.shuffle = value === '1';
+    if (name === 'shuffle') F.shuffle = value === '1';
     else if (name === 'day') F.days ^= 1 << Number(value);
     else if (name === 'enabled') F.enabled = !F.enabled;
     else if (name === 'recursive') F.recursive = !F.recursive;
@@ -1258,7 +1292,6 @@ function onChip(chip) {
     else if (name === 'background') F.background = value;
     else if (name === 'subject') F.subject = !F.subject;
     const isOn = {
-        interval: v => Number(v) === F.interval,
         shuffle: v => (v === '1') === F.shuffle,
         day: v => Boolean(F.days & (1 << Number(v))),
         enabled: () => F.enabled,
@@ -1269,7 +1302,10 @@ function onChip(chip) {
         background: v => v === F.background,
         subject: () => F.subject,
     }[name];
-    $$('.chip', group).forEach(c => c.classList.toggle('on', isOn(c.dataset.value)));
+    // Chips that share a group (e.g. the album toggles) each keep their own state
+    $$('.chip', group).forEach(c => { if (c.dataset.chip === name) c.classList.toggle('on', isOn(c.dataset.value)); });
+    const bg = $('#backgroundField');
+    if (bg) bg.hidden = !showBackground();
 }
 
 function onAction(action, el) {
@@ -1301,6 +1337,8 @@ function onAction(action, el) {
 
 document.addEventListener('click', e => {
     if (e.target.closest('[data-close]')) { closeSheet(); return; }
+    const help = e.target.closest('#sheetHelp');
+    if (help) { toggleHelp(help); return; }
     const chip = e.target.closest('[data-chip]');
     if (chip) { onChip(chip); return; }
     const action = e.target.closest('[data-action]');
@@ -1343,14 +1381,14 @@ $$('#tabs .tab').forEach(b => {
     };
 });
 
-// Barra superior: sólida y con el título pequeño en cuanto el título grande sale de la vista
+// Top bar: turns solid and shows the small title once the large title scrolls out of view
 function updateTopbar() {
     $('#topbar').classList.toggle('scrolled', window.scrollY > 36);
 }
 window.addEventListener('scroll', updateTopbar, { passive: true });
 updateTopbar();
 
-// Sheet: arrastrar hacia abajo desde la cabecera para cerrar (solo móvil)
+// Sheet: drag down from the header to close (mobile only)
 (function sheetDrag() {
     const panel = $('.sheet-panel');
     const head = $('#sheetHead');
@@ -1384,7 +1422,7 @@ updateTopbar();
     head.addEventListener('pointercancel', end);
 })();
 
-// Estado de los TV al día mientras la app está abierta
+// Keep TV status fresh while the app is open
 setInterval(() => {
     if (document.visibilityState === 'visible' && $('#sheet').hidden) reload('tvs').catch(() => {});
 }, 60000);

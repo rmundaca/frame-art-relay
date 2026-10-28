@@ -1,4 +1,4 @@
-"""Sincroniza "Mis fotos" de un TV con el álbum de la franja activa."""
+"""Syncs a TV's "My Photos" with the album of the active slot."""
 import logging
 from dataclasses import dataclass
 
@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models.schemas import Album, CompositionPage, Image, TvContent
-from app.services.albums import album_images, image_file  # noqa: F401 - album_images se reexporta
+from app.services.albums import album_images, image_file  # noqa: F401 - album_images is re-exported
 from app.services.composition import effective_output, page_file, render_single, row_key
 
 logger = logging.getLogger("sync")
@@ -25,7 +25,7 @@ class SyncResult:
 
 
 def reconcile(db: Session, tv_id: int, on_tv: set) -> list:
-    """Olvida las subidas que ya no están en el TV (borradas a mano) y devuelve las que siguen."""
+    """Forget uploads that are no longer on the TV (deleted by hand) and return the ones that remain."""
     rows = db.query(TvContent).filter(TvContent.tv_id == tv_id).all()
     alive = []
     for row in rows:
@@ -55,18 +55,18 @@ def _delete(db: Session, tv_id: int, client, rows: list) -> tuple:
 
 
 def sync_tv(db: Session, tv, album: Album, client) -> SyncResult:
-    """Sube lo que falta de la salida del álbum (por tandas) y borra lo que subió la app y ya no corresponde.
+    """Upload what is missing from the album output (in batches) and delete what the app uploaded that no longer belongs.
 
-    Lo de otros álbumes se borra primero, para hacer sitio. Lo anterior de este mismo álbum (originales que
-    ahora van en una composición, revisiones viejas de una página, fotos excluidas, variantes sin la fecha o con
-    otra fecha) se retira solo cuando la salida nueva está generada y subida entera: un fallo nunca deja el TV
-    con una salida vacía o incompleta.
+    Content from other albums is deleted first, to make room. Older content from this same album (originals that
+    now go in a layout, old page revisions, excluded photos, variants without the date or with another date) is
+    retired only once the new output is fully rendered and uploaded: a failure never leaves the TV with an empty
+    or incomplete output.
     """
     result = SyncResult()
     rows = reconcile(db, tv.id, {p["content_id"] for p in client.my_photos()})
     output = effective_output(db, album)
     if not output.current:
-        # La agrupación todavía no refleja las fotos actuales: se espera a la tarea de composición
+        # The grouping does not reflect the current photos yet: wait for the layout task
         result.pending = output.total
         result.on_tv = len(rows)
         return result
@@ -89,7 +89,7 @@ def sync_tv(db: Session, tv, album: Album, client) -> SyncResult:
                 data = render_single(image_file(db, item.image), item)
         except (ValueError, OSError) as exc:
             logger.warning("Salida %s omitida: %s", item.key, exc)
-            # Una composición sin archivo bloquea el retiro de lo anterior; un original ilegible no
+            # A layout without a file blocks retiring the old content; an unreadable original does not
             if item.page:
                 result.pending += 1
             continue

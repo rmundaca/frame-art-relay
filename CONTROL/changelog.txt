@@ -1,23 +1,23 @@
 1.2.5 (2026-10-25)
-- Actualización de Frame Art.
+- Frame Art update.
 
 1.2.4 (2026-10-25)
-- Actualización de Frame Art.
+- Frame Art update.
 
 1.2.3 (2026-10-25)
-- Actualización de Frame Art.
+- Frame Art update.
 
 1.2.2 (2026-10-25)
-- Actualización de Frame Art.
+- Frame Art update.
 
 1.2.1 (2026-10-25)
-- Actualización de Frame Art.
+- Frame Art update.
 
 1.2.0 (2026-10-25)
-- Puerto 8092, iconos nuevos y álbumes compartidos de iCloud
+- Port 8092, new icons and iCloud shared albums
 
 1.1.0 (2026-10-24)
-- Primera versión de Frame Art: álbumes de carpetas del NAS, televisores, franjas horarias y slideshow nativo
+- First Frame Art release: albums from NAS folders, TVs, time slots and native slideshow
 
 1.0.0 (2026-01-01)
-- Versión inicial.
+- Initial version.

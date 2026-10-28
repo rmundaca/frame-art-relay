@@ -1,4 +1,4 @@
-"""Fase 11.1: fecha de la toma en las fotos de iCloud."""
+"""Date taken stamped on iCloud photos."""
 import io
 import tempfile
 import unittest
@@ -22,7 +22,7 @@ ICLOUD_URL = "https://www.icloud.com/sharedalbum/#B0aGtest123"
 
 
 def dated_photo(path: Path, size, taken=None, color=(40, 90, 160), plain=None):
-    """JPEG con DateTimeOriginal en el IFD Exif (taken) o solo DateTime en el principal (plain)."""
+    """JPEG with DateTimeOriginal in the Exif IFD (taken) or only DateTime in the main IFD (plain)."""
     path.parent.mkdir(parents=True, exist_ok=True)
     img = PILImage.new("RGB", size, color)
     exif = PILImage.Exif()
@@ -71,9 +71,9 @@ class MetaTest(unittest.TestCase):
         draw_date(canvas, box, "2021-04-24")
         changed = [(x, y) for x in range(0, 1200, 4) for y in range(0, 800, 4) if canvas.getpixel((x, y)) != color]
         self.assertTrue(changed)
-        # Todo el texto y su sombra quedan dentro de la foto, en su esquina inferior derecha
+        # All the text and its shadow stay inside the photo, in its bottom right corner
         self.assertTrue(all(600 < x < 1000 - DATE_MARGIN // 2 and 600 < y < 700 for x, y in changed))
-        # Las tintas más claras son el texto blanco
+        # The lightest pixels are the white text
         self.assertGreater(max(sum(canvas.getpixel(p)) for p in changed), sum(color) + 200)
 
     def test_skips_boxes_too_small(self):
@@ -83,7 +83,7 @@ class MetaTest(unittest.TestCase):
 
 
 class DateStampDbMixin(CompositionDbMixin):
-    """Álbum con una fuente local (self.source) y otra de iCloud con fotos en su caché."""
+    """Album with a local source (self.source) and an iCloud one with photos in its cache."""
 
     def setUp(self):
         super().setUp()
@@ -123,7 +123,7 @@ class SingleStampTest(DateStampDbMixin, unittest.TestCase):
         super().setUp()
         self.cloud = self.cloud_photo("perro-1.jpg", (1600, 900), taken="2021:04:24 15:50:59")
         dated_photo(self.root / "local.jpg", (1600, 900), taken="2022:07:03 15:18:45")
-        self.rescan()  # escanea la fuente local y lee los metadatos pendientes
+        self.rescan()  # scans the local source and reads pending metadata
 
     def test_only_icloud_photos_get_the_date(self):
         local = self.image("local.jpg")
@@ -136,7 +136,7 @@ class SingleStampTest(DateStampDbMixin, unittest.TestCase):
         dated = self.uploaded(next(r for r in self.rows() if r.image_id == self.cloud.id))
         self.assertEqual(dated.size, FRAME_SIZE)
         corner = dated.crop((3840 - 400, 2160 - 100, 3840 - DATE_MARGIN, 2160 - DATE_MARGIN))
-        self.assertGreater(corner.getextrema()[0][1], 200)  # texto blanco sobre una foto azul oscura
+        self.assertGreater(corner.getextrema()[0][1], 200)  # white text on a dark blue photo
 
     def test_toggle_replaces_upload_without_gaps(self):
         self.sync()
@@ -149,7 +149,7 @@ class SingleStampTest(DateStampDbMixin, unittest.TestCase):
         self.assertNotEqual(rows[self.cloud.id].content_id, old[self.cloud.id])
         self.assertIsNone(rows[self.cloud.id].render_sig)
         self.assertNotIn(old[self.cloud.id], self.client.photos)
-        self.assertIn("MY_F9999", self.client.photos)  # las fotos ajenas no se tocan
+        self.assertIn("MY_F9999", self.client.photos)  # foreign photos are not touched
         self.assertEqual(self.sync().uploaded, 0)
 
     def test_failed_upload_keeps_previous_variant(self):

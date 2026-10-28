@@ -1,12 +1,12 @@
-"""Composiciones automáticas: agrupa varias fotos de un álbum en una página 3840x2160, como una hoja de álbum.
+"""Automatic layouts: groups several album photos onto a 3840x2160 page, like an album page.
 
-- La agrupación es determinista y estable: las páginas válidas se conservan entre reescaneos y las fotos
-  nuevas aprovechan páginas incompletas o forman páginas nuevas.
-- Cada foto se recorta como mucho MAX_CROP por eje para que el grupo llene el lienzo; nunca se deforma. El
-  espacio que sobra queda como fondo (papel o las propias fotos desenfocadas) alrededor del grupo.
-- Las fotos que van solas pueden mostrarse completas sobre ese mismo fondo (Album.single_fit = "fit").
-- Se renderiza fuera de las peticiones HTTP, una página y una foto por vez, bajo el candado global de
-  decodificación de image_proc.
+- Grouping is deterministic and stable: valid pages survive rescans and new photos fill incomplete pages
+  or form new ones.
+- Each photo is cropped at most MAX_CROP per axis so the group fills the canvas; it is never distorted. The
+  leftover space becomes background (paper or the photos themselves, blurred) around the group.
+- Single photos can be shown whole over that same background (Album.single_fit = "fit").
+- Rendering happens outside HTTP requests, one page and one photo at a time, under image_proc's global
+  decode lock.
 """
 import hashlib
 import io
@@ -37,62 +37,62 @@ logger = logging.getLogger("composition")
 MODES = ("off", "auto")
 BACKGROUNDS = ("paper", "blur")
 SINGLE_FITS = ("crop", "fit")
-RENDERER_VERSION = 2  # 2: recorte limitado de las celdas y fondo desenfocado
+RENDERER_VERSION = 2  # 2: limited cell cropping and blurred background
 
-# Diseño fijo de la página, en píxeles del lienzo de 3840x2160
-MARGIN = 96  # borde mínimo alrededor del grupo de fotos
-GAP = 48  # separación entre fotos
-BACKGROUND = (236, 234, 230)  # gris cálido neutro, como el papel de un álbum
+# Fixed page design, in pixels of the 3840x2160 canvas
+MARGIN = 96  # minimum border around the photo group
+GAP = 48  # gap between photos
+BACKGROUND = (236, 234, 230)  # neutral warm grey, like album paper
 JPEG_QUALITY = 90
-# Recorte máximo de cada foto por eje (0,15 = hasta un 15 % del ancho o del alto) para que el grupo llene el
-# lienzo. Con fotos 3:4 y 4:3, trio_v2h pasa de 518 a unos 276 px de fondo por lado
+# Maximum crop of each photo per axis (0.15 = up to 15 % of the width or height) so the group fills the
+# canvas. With 3:4 and 4:3 photos, trio_v2h goes from 518 to about 276 px of background per side
 MAX_CROP = 0.15
-# Una foto sola que pierde como mucho esta fracción de superficie al recortarse a 16:9 llena la pantalla
-# (4:3, 3:2, 16:9); con más pérdida (verticales, panorámicas) se agrupa o, con "fit", se muestra completa
+# A single photo that loses at most this fraction of its area when cropped to 16:9 fills the screen
+# (4:3, 3:2, 16:9); with more loss (portrait, panoramic) it is grouped or, with "fit", shown whole
 SINGLE_MAX_CROP = 0.25
 SCREEN_RATIO = FRAME_SIZE[0] / FRAME_SIZE[1]
-# Fondo desenfocado: las fotos se reducen a este lienzo, se desenfocan, se oscurecen y se amplían
+# Blurred background: photos are shrunk to this canvas, blurred, darkened and scaled up
 BLUR_SIZE = (240, 135)
 BLUR_RADIUS = 8
 BLUR_BRIGHTNESS = 0.75
-# Una plantilla solo se acepta si las fotos cubren al menos MIN_FILL del lienzo y ninguna queda con el
-# lado corto por debajo de MIN_SIDE. Así dos horizontales 3:2 apiladas (36 %) siguen como individuales,
-# que en 16:9 apenas pierden imagen, y las verticales, que sí perderían mucho al recortarse, se agrupan.
+# A template is only accepted if the photos cover at least MIN_FILL of the canvas and none ends up with its
+# short side below MIN_SIDE. So two stacked 3:2 landscapes (36 %) stay single, since they barely lose
+# anything at 16:9, while portraits, which would lose a lot when cropped, get grouped.
 MIN_FILL = 0.40
 MIN_SIDE = 640
-# Hasta esta proporción (ancho / alto) la foto ocupa una celda vertical: incluye las cuadradas
+# Up to this aspect ratio (width / height) a photo takes a portrait cell: includes square ones
 VERTICAL_MAX_RATIO = 1.1
-# Compañeros que se prueban para cada foto, los más cercanos en el orden del álbum
+# Partners tried for each photo: the nearest ones in album order
 LOOKAHEAD = 8
 
-# Árbol de cada plantilla: ("row" | "col", hijos); las hojas son la posición de la foto en la página
+# Tree of each template: ("row" | "col", children); leaves are the photo's position on the page
 TEMPLATES = {
     "pair_v": ("row", [0, 1]),  # dos verticales lado a lado
     "pair_h": ("col", [0, 1]),  # dos horizontales apiladas
-    "trio_v2h": ("row", [0, ("col", [1, 2])]),  # una vertical junto a dos horizontales apiladas
-    "duo_vh": ("row", [0, 1]),  # una vertical y una horizontal, asimétricas
-    "trio_v": ("row", [0, 1, 2]),  # tres verticales en fila: recoge la vertical sobrante de un número impar
-    "single": ("row", [0]),  # una foto sola mostrada completa (single_fit = "fit"); no se usa al agrupar
+    "trio_v2h": ("row", [0, ("col", [1, 2])]),  # one portrait next to two stacked landscapes
+    "duo_vh": ("row", [0, 1]),  # one portrait and one landscape, asymmetric
+    "trio_v": ("row", [0, 1, 2]),  # three portraits in a row: takes the leftover portrait of an odd count
+    "single": ("row", [0]),  # a single photo shown whole (single_fit = "fit"); not used when grouping
 }
-# Orientación que exige cada posición: v vertical o cuadrada, h horizontal o panorámica
+# Orientation each position requires: v portrait or square, h landscape or panoramic
 SLOTS = {"pair_v": "vv", "pair_h": "hh", "trio_v2h": "vhh", "duo_vh": "vh", "trio_v": "vvv"}
 
-# Serializa planificación, renderizado y limpieza de todos los álbumes: solo un lienzo 4K a la vez
+# Serializes planning, rendering and cleanup for all albums: only one 4K canvas at a time
 _job_lock = threading.Lock()
 
 
 class CompositionError(Exception):
-    """Código estable: composition_source_unavailable, composition_render_failed."""
+    """Stable code: composition_source_unavailable, composition_render_failed."""
 
 
-# ------------------------------------------------------------------ maquetación
+# ------------------------------------------------------------------ layout
 
 def _orientation(ratio: float) -> str:
     return "v" if ratio <= VERTICAL_MAX_RATIO else "h"
 
 
 def _linear(node, ratios) -> tuple:
-    """(a, b) tales que el ancho del nodo es a * alto + b."""
+    """(a, b) such that the node width is a * height + b."""
     if isinstance(node, int):
         return ratios[node], 0.0
     kind, children = node
@@ -100,7 +100,7 @@ def _linear(node, ratios) -> tuple:
     gaps = GAP * (len(children) - 1)
     if kind == "row":
         return sum(a for a, _ in parts), sum(b for _, b in parts) + gaps
-    # Columna de ancho común w: alto = w * sum(1/a) - sum(b/a) + huecos; se despeja w
+    # Column of common width w: height = w * sum(1/a) - sum(b/a) + gaps; solve for w
     inv = sum(1 / a for a, _ in parts)
     off = sum(b / a for a, b in parts)
     return 1 / inv, (off - gaps) / inv
@@ -124,13 +124,13 @@ def _place(node, ratios, x, y, w, h, out) -> None:
 
 
 def single_loss(ratio: float) -> float:
-    """Fracción de la foto que se pierde al recortarla a la proporción de la pantalla."""
+    """Fraction of the photo lost when cropping it to the screen aspect ratio."""
     return 1 - min(ratio / SCREEN_RATIO, SCREEN_RATIO / ratio)
 
 
 def crop_factor(template: str, ratios) -> float:
-    """Factor común de las proporciones de las celdas (proporción de la foto * f) que ajusta el grupo al
-    recuadro útil del lienzo, limitado a MAX_CROP por eje: f < 1 recorta los lados y f > 1 arriba y abajo."""
+    """Common factor for the cell aspect ratios (photo aspect * f) that fits the group to the usable area of
+    the canvas, limited to MAX_CROP per axis: f < 1 crops the sides and f > 1 the top and bottom."""
     box_w, box_h = FRAME_SIZE[0] - 2 * MARGIN, FRAME_SIZE[1] - 2 * MARGIN
     lo, hi = 1 - MAX_CROP, 1 / (1 - MAX_CROP)
 
@@ -138,7 +138,7 @@ def crop_factor(template: str, ratios) -> float:
         a, b = _linear(TEMPLATES[template], [r * f for r in ratios])
         return a * box_h + b > box_w
 
-    # Ensanchar las celdas siempre ensancha el grupo: se busca el punto en que llena ancho y alto a la vez
+    # Widening the cells always widens the group: find the point where it fills width and height at once
     if too_wide(lo):
         return lo
     if not too_wide(hi):
@@ -150,7 +150,7 @@ def crop_factor(template: str, ratios) -> float:
 
 
 def layout(template: str, ratios: list) -> list:
-    """Rectángulos (x, y, ancho, alto) de cada posición, centrados en el lienzo, con el recorte de crop_factor."""
+    """Rectangles (x, y, width, height) for each position, centred on the canvas, with the crop_factor crop."""
     return list(_layout(template, tuple(round(r, 6) for r in ratios)))
 
 
@@ -177,11 +177,11 @@ def _layout(template: str, ratios: tuple) -> tuple:
 
 
 def fill_score(template: str, ratios: list) -> Optional[float]:
-    """Fracción del lienzo cubierta por las fotos, o None si la plantilla no es adecuada."""
+    """Fraction of the canvas covered by the photos, or None if the template is not suitable."""
     slots = SLOTS[template]
     if len(ratios) != len(slots) or any(_orientation(r) != s for r, s in zip(ratios, slots)):
         return None
-    # Dos horizontales que ya llenan la pantalla solas (4:3, 3:2, 16:9) no se apilan: se verían más pequeñas
+    # Two landscapes that already fill the screen on their own (4:3, 3:2, 16:9) are not stacked: they would look smaller
     if template == "pair_h" and any(single_loss(r) <= SINGLE_MAX_CROP for r in ratios):
         return None
     boxes = layout(template, ratios)
@@ -191,20 +191,20 @@ def fill_score(template: str, ratios: list) -> Optional[float]:
     return fill if fill >= MIN_FILL else None
 
 
-# -------------------------------------------------------------------- agrupación
+# -------------------------------------------------------------------- grouping
 
 def _ordered(template: str, ids: list, ratio: dict, pos: dict) -> list:
-    """Integrantes en el orden de las posiciones de la plantilla; a igual orientación, el del álbum."""
+    """Members in the order of the template positions; for equal orientation, album order."""
     return sorted(ids, key=lambda i: (SLOTS[template].index(_orientation(ratio[i])), pos[i]))
 
 
 def group(candidates: list, existing: dict = None) -> tuple:
-    """Agrupa fotos en páginas.
+    """Group photos into pages.
 
-    candidates: [(image_id, proporción o None)] en el orden del álbum; None significa que no se pudo medir.
-    existing: {page_id: (plantilla, [image_id])} de la agrupación anterior.
-    Devuelve (keep, new): keep = {page_id: (plantilla, [image_id])} para las páginas que siguen (quizá
-    ampliadas), new = [(plantilla, [image_id])]. Las demás fotos quedan individuales.
+    candidates: [(image_id, aspect ratio or None)] in album order; None means it could not be measured.
+    existing: {page_id: (template, [image_id])} from the previous grouping.
+    Returns (keep, new): keep = {page_id: (template, [image_id])} for the pages that remain (possibly
+    extended), new = [(template, [image_id])]. All other photos stay single.
     """
     ratio = {i: r for i, r in candidates if r}
     pos = {i: n for n, (i, _) in enumerate(candidates)}
@@ -229,7 +229,7 @@ def group(candidates: list, existing: dict = None) -> tuple:
     def fits(template, ids):
         return fill_score(template, [ratio[i] for i in _ordered(template, ids, ratio, pos)]) is not None
 
-    # Páginas incompletas: una vertical con una horizontal admite una segunda horizontal
+    # Incomplete pages: one portrait with one landscape accepts a second landscape
     for page_id in sorted(keep):
         template, ids = keep[page_id]
         if template != "duo_vh":
@@ -247,7 +247,7 @@ def group(candidates: list, existing: dict = None) -> tuple:
         new.append((template, ids))
         used.update(ids)
 
-    # Las verticales son las que más pierden al recortarse a 16:9: eligen compañero primero
+    # Portraits lose the most when cropped to 16:9: they pick a partner first
     for v in free("v"):
         if v in used:
             continue
@@ -273,7 +273,7 @@ def group(candidates: list, existing: dict = None) -> tuple:
         if mate is not None:
             take("pair_h", [h, mate])
 
-    # Una vertical sobrante (número impar) se suma a la pareja de verticales más cercana, nueva o existente
+    # A leftover portrait (odd count) joins the nearest pair of portraits, new or existing
     for v in free("v"):
         pairs = [("new", n, ids) for n, (t, ids) in enumerate(new) if t == "pair_v"]
         pairs += [("keep", pid, ids) for pid, (t, ids) in sorted(keep.items()) if t == "pair_v"]
@@ -300,12 +300,12 @@ def _version(img: Image) -> str:
 
 # --------------------------------------------------------------------- sujeto
 
-# Margen alrededor del sujeto que se intenta conservar, en fracción de la foto
+# Margin around the subject we try to keep, as a fraction of the photo
 SUBJECT_PAD = 0.025
 
 
 def subject_box(album: Album, img: Image) -> Optional[list]:
-    """Recuadro del sujeto vigente ([x0, y0, x1, y1] en 0-1) si el álbum usa la detección, o None."""
+    """Current subject box ([x0, y0, x1, y1] in 0-1) if the album uses detection, or None."""
     if not album.subject_detection or not img.subject_box or img.subject_sig != _version(img):
         return None
     try:
@@ -316,16 +316,16 @@ def subject_box(album: Album, img: Image) -> Optional[list]:
 
 
 def subjects_pending(album: Album, images: list) -> bool:
-    """Hay fotos sin analizar y la detección funciona: la salida espera para no subir dos versiones."""
+    """There are unanalysed photos and detection works: the output waits so two versions are not uploaded."""
     return bool(album.subject_detection and not album.subject_error
                 and any(img.subject_sig != _version(img) for img in images))
 
 
 def detect_subjects(db: Session, album: Album, client=None) -> None:
-    """Analiza con Gemini las fotos del álbum que van al TV y aún no tienen resultado para su versión.
+    """Analyse with Gemini the album photos that go to the TV and have no result for their version yet.
 
-    Un fallo propio de una foto la deja sin sujeto (recorte al centro); uno general (red, clave, cupo) detiene
-    la tanda y queda en album.subject_error: la salida sigue con recortes al centro y se reintenta más tarde."""
+    A failure specific to one photo leaves it without a subject (centre crop); a general one (network, key, quota)
+    stops the batch and is stored in album.subject_error: the output continues with centre crops and retries later."""
     if not album.subject_detection:
         return
     error = None
@@ -341,7 +341,7 @@ def detect_subjects(db: Session, album: Album, client=None) -> None:
                 break
             box = None
         except (ValueError, OSError):
-            box = None  # foto ilegible: sin sujeto
+            box = None  # unreadable photo: no subject
         img.subject_box, img.subject_sig = (json.dumps(box) if box else ""), version
         db.commit()
     album.subject_error = error
@@ -349,8 +349,8 @@ def detect_subjects(db: Session, album: Album, client=None) -> None:
 
 
 def _window(lo: float, hi: float, visible: float, keep_start: bool) -> float:
-    """Posición (0-1, como centering de ImageOps.fit) de una ventana de tamaño visible sobre [0, 1] que contiene
-    [lo, hi] si cabe; si no cabe, centrada en el sujeto o, con keep_start, pegada a su inicio (las cabezas)."""
+    """Position (0-1, like ImageOps.fit centering) of a window of size visible over [0, 1] that contains
+    [lo, hi] if it fits; otherwise centred on the subject or, with keep_start, aligned to its start (heads)."""
     if visible >= 1:
         return 0.5
     lo, hi = max(0.0, lo - SUBJECT_PAD), min(1.0, hi + SUBJECT_PAD)
@@ -363,11 +363,11 @@ def _window(lo: float, hi: float, visible: float, keep_start: bool) -> float:
 
 
 def centering(box: Optional[list], photo_ratio: float, cell_ratio: float) -> tuple:
-    """centering de ImageOps.fit que conserva el sujeto al recortar la foto a la proporción de la celda."""
+    """ImageOps.fit centering that keeps the subject when cropping the photo to the cell aspect ratio."""
     if not box:
         return 0.5, 0.5
     x0, y0, x1, y1 = box
-    if cell_ratio < photo_ratio:  # se recortan los lados
+    if cell_ratio < photo_ratio:  # the sides are cropped
         return _window(x0, x1, cell_ratio / photo_ratio, False), 0.5
     return 0.5, _window(y0, y1, photo_ratio / cell_ratio, True)
 
@@ -377,7 +377,7 @@ def page_signature(template: str, images: list, dates: list = (), background: st
     parts = [f"r{RENDERER_VERSION}", template, f"{MARGIN},{GAP},{BACKGROUND},{JPEG_QUALITY},{MAX_CROP}",
              background, *(_version(img) for img in images)]
     if any(dates):
-        # Solo si alguna foto lleva fecha: las páginas sin fecha conservan su firma anterior
+        # Only if some photo has a date: pages without dates keep their previous signature
         parts.append("dates:" + ",".join(dates))
     if any(subjects):
         parts.append("subjects:" + json.dumps(list(subjects)))
@@ -385,7 +385,7 @@ def page_signature(template: str, images: list, dates: list = (), background: st
 
 
 def single_sig(date: str, fitted: bool = False, background: str = "paper", subject: Optional[list] = None) -> str:
-    """Variante de una imagen individual en el TV (TvContent.render_sig); "" es el recorte a 16:9 sin fecha."""
+    """Variant of a single image on the TV (TvContent.render_sig); "" is the 16:9 crop without a date."""
     parts = [f"fit{RENDERER_VERSION}:{MAX_CROP}:{background}"] if fitted else []
     if date:
         parts.append(f"date={date}")
@@ -395,7 +395,7 @@ def single_sig(date: str, fitted: bool = False, background: str = "paper", subje
 
 
 def fits_single(album: Album, img: Image) -> bool:
-    """La foto sola se muestra completa sobre el fondo: el álbum lo pide y recortarla a 16:9 perdería mucho."""
+    """The single photo is shown whole over the background: the album asks for it and a 16:9 crop would lose a lot."""
     return (album.single_fit == "fit" and bool(img.width and img.height)
             and single_loss(img.width / img.height) > SINGLE_MAX_CROP)
 
@@ -432,7 +432,7 @@ def _retire(page: CompositionPage) -> None:
 
 
 def plan_album(db: Session, album: Album) -> None:
-    """Recalcula la agrupación del álbum conservando las páginas que siguen siendo válidas."""
+    """Recompute the album grouping, keeping the pages that are still valid."""
     pages = active_pages(db, album.id)
     if album.composition_mode != "auto":
         for page in pages:
@@ -484,9 +484,9 @@ def _atomic_save(img, dest: Path, quality: int) -> None:
 
 
 def _blurred_background(paths: list, boxes: list):
-    """Fondo con las propias fotos: el grupo estirado a todo el lienzo, muy desenfocado y algo oscurecido.
+    """Background made from the photos themselves: the group stretched to the whole canvas, heavily blurred and darkened.
 
-    Se trabaja sobre un lienzo de BLUR_SIZE y cada foto se decodifica a escala mínima (draft)."""
+    Works on a BLUR_SIZE canvas and each photo is decoded at the smallest scale (draft)."""
     gx0, gy0 = min(x for x, _, _, _ in boxes), min(y for _, y, _, _ in boxes)
     gx1, gy1 = max(x + w for x, _, w, _ in boxes), max(y + h for _, y, _, h in boxes)
     sx, sy = BLUR_SIZE[0] / (gx1 - gx0), BLUR_SIZE[1] / (gy1 - gy0)
@@ -505,8 +505,8 @@ def _blurred_background(paths: list, boxes: list):
 
 
 def _compose(paths: list, boxes: list, dates: list, background: str, subjects: list = None):
-    """Lienzo 3840x2160 con cada foto recortada a su celda (al centro o hacia su sujeto) y su fecha; una foto
-    decodificada a la vez."""
+    """3840x2160 canvas with each photo cropped to its cell (centred or towards its subject) and its date; one photo
+    decoded at a time."""
     canvas = _blurred_background(paths, boxes) if background == "blur" else PILImage.new("RGB", FRAME_SIZE, BACKGROUND)
     try:
         for path, date, subject, (x, y, w, h) in zip(paths, dates, subjects or [None] * len(paths), boxes):
@@ -527,7 +527,7 @@ def _compose(paths: list, boxes: list, dates: list, background: str, subjects: l
 
 
 def render_single(path: Path, item) -> bytes:
-    """JPEG de una foto individual: recortada a 16:9 o, si item.fitted, completa sobre el fondo del álbum."""
+    """JPEG of a single photo: cropped to 16:9 or, if item.fitted, whole over the album background."""
     img = item.image
     if not item.fitted:
         where = centering(item.subject, img.width / img.height, SCREEN_RATIO) if item.subject else (0.5, 0.5)
@@ -544,7 +544,7 @@ def render_single(path: Path, item) -> bytes:
 
 
 def render_page(db: Session, page: CompositionPage) -> None:
-    """Genera el JPEG y la miniatura de la revisión actual; deja la página en ready o en error."""
+    """Render the JPEG and thumbnail of the current revision; leaves the page ready or in error."""
     revision = page.revision
     try:
         images = [db.get(Image, m.image_id) for m in page.members]
@@ -556,7 +556,7 @@ def render_page(db: Session, page: CompositionPage) -> None:
         except (ValueError, OSError):
             raise CompositionError("composition_source_unavailable") from None
         try:
-            # Cabecera y límites antes de decodificar; si el archivo cambió se espera al reescaneo
+            # Header and limits before decoding; if the file changed, wait for the rescan
             if any(oriented_size(path) != (img.width, img.height) for img, path in zip(images, paths)):
                 raise CompositionError("composition_source_unavailable")
         except FileNotFoundError:
@@ -582,7 +582,7 @@ def render_page(db: Session, page: CompositionPage) -> None:
     except CompositionError as exc:
         page.status, page.last_error = "error", str(exc)
     except (ValueError, OSError, PILImage.DecompressionBombError) as exc:
-        logger.warning("Composición %s: %s", page.id, exc)
+        logger.warning("Layout %s: %s", page.id, exc)
         page.status, page.last_error = "error", "composition_render_failed"
     else:
         page.status, page.last_error, page.rendered_revision = "ready", None, revision
@@ -603,7 +603,7 @@ def render_pending(db: Session, album_id: int) -> int:
 # ------------------------------------------------------------------------ limpieza
 
 def cleanup(db: Session, album_id: int) -> None:
-    """Borra páginas retiradas y revisiones que ya no usa ningún TV, y temporales de trabajos interrumpidos."""
+    """Delete retired pages, revisions no TV uses any more, and temp files from interrupted jobs."""
     referenced = {}
     for page_id, revision in (db.query(TvContent.page_id, TvContent.page_revision)
                               .join(CompositionPage, CompositionPage.id == TvContent.page_id)
@@ -642,7 +642,7 @@ def remove_cache(album_id: int) -> None:
 
 
 def process_album(db: Session, album_id: int) -> None:
-    """Planifica, renderiza lo pendiente (también lo que quedó a medias tras un reinicio) y limpia."""
+    """Plan, render whatever is pending (including work left half-done by a restart) and clean up."""
     with _job_lock:
         album = db.get(Album, album_id)
         if not album:
@@ -658,29 +658,29 @@ def process_album(db: Session, album_id: int) -> None:
 
 @dataclass
 class OutputItem:
-    key: tuple  # ("i", image_id, variante) o ("p", page_id, revisión)
+    key: tuple  # ("i", image_id, variant) or ("p", page_id, revision)
     order: str
     image: Optional[Image] = None
     page: Optional[CompositionPage] = None
-    date: str = ""  # fecha que se dibuja en una imagen individual
-    fitted: bool = False  # imagen individual completa sobre el fondo, en lugar de recortada a 16:9
+    date: str = ""  # date drawn on a single image
+    fitted: bool = False  # single image shown whole over the background instead of cropped to 16:9
     background: str = "paper"
-    subject: Optional[list] = None  # recuadro del sujeto hacia el que se orienta el recorte
+    subject: Optional[list] = None  # subject box the crop is steered towards
 
 
 @dataclass
 class Output:
     items: list = field(default_factory=list)
-    photos: int = 0  # fotos originales candidatas
-    total: int = 0  # imágenes finales para el TV según la agrupación
+    photos: int = 0  # candidate original photos
+    total: int = 0  # final images for the TV according to the grouping
     pending: int = 0
     errors: int = 0
     error: Optional[str] = None
-    current: bool = True  # la agrupación corresponde a las fotos actuales
+    current: bool = True  # the grouping matches the current photos
 
     @property
     def complete(self) -> bool:
-        """Toda la salida está generada: se puede retirar la anterior."""
+        """The whole output is rendered: the previous one can be retired."""
         return self.current and not self.pending and not self.errors
 
 
@@ -696,10 +696,10 @@ def _single(db: Session, album: Album, img: Image) -> OutputItem:
 
 
 def effective_output(db: Session, album: Album) -> Output:
-    """Lo que debe estar en el TV: composiciones generadas e imágenes no agrupadas, en el orden del álbum."""
+    """What should be on the TV: rendered layouts and ungrouped images, in album order."""
     images = album_images(db, album)
     out = Output(photos=len(images))
-    # Sin la fecha leída todavía no se sabe qué variante subir: se espera a la tarea de composición
+    # Until the date is read we do not know which variant to upload: wait for the layout task
     out.current = not any(img.taken_at is None and (album.single_fit == "fit" or wants_date(db, album, img))
                           for img in images) and not subjects_pending(album, images)
     if album.composition_mode != "auto":

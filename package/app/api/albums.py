@@ -71,7 +71,7 @@ def album_view(album: Album, db: Session) -> dict:
         "composition_mode": album.composition_mode, "date_stamp": album.date_stamp,
         "background": album.background, "single_fit": album.single_fit,
         "subject_detection": album.subject_detection, "subject_error": album.subject_error,
-        # Fotos originales que van al TV (con el tope) e imágenes finales tras agrupar
+        # Original photos that go to the TV (capped) and final images after grouping
         "output": {"photos": output.photos, "total": output.total, "pending": output.pending,
                    "errors": output.errors, "error": output.error, "current": output.current},
         "sources": [source_view(s) for s in album.sources],
@@ -179,8 +179,8 @@ def update_album(album_id: int, req: AlbumPatch, db: Session = Depends(get_db)):
     db.commit()
     if (album.composition_mode, album.date_stamp, album.background, album.single_fit,
             album.subject_detection) != before:
-        # Al activar se agrupa y al desactivar se retiran las páginas; la fecha, el fondo y el sujeto cambian la
-        # firma de las páginas y "fit" necesita las dimensiones. El TV cambia cuando la salida nueva está lista
+        # Turning it on groups photos and turning it off retires the pages; date, background and subject change the
+        # page signature and "fit" needs the dimensions. The TV switches once the new output is ready
         run_now(compose_album, album.id)
     return album_view(album, db)
 
@@ -224,7 +224,7 @@ def add_source(album_id: int, req: SourceIn, db: Session = Depends(get_db)):
 def _add_icloud_source(db: Session, album: Album, url: str) -> dict:
     try:
         url = source_icloud.canonical_url(url)
-        # Validación rápida (álbum público y nombre); la descarga sigue en segundo plano
+        # Quick validation (public album and name); the download continues in the background
         with httpx.Client(timeout=15, follow_redirects=False) as client:
             name = source_icloud.album_name(client, url)
     except source_icloud.ICloudError as exc:
@@ -262,7 +262,7 @@ def rescan(album_id: int, db: Session = Depends(get_db)):
             run_now(refresh_source, source.id)
         else:
             rescan_source(db, source)
-    # Las fuentes de iCloud vuelven a agrupar al terminar su descarga; esto agrupa con lo que ya hay
+    # iCloud sources regroup when their download finishes; this groups whatever is already there
     run_now(compose_album, album.id)
     db.refresh(album)
     return album_view(album, db)
@@ -305,7 +305,7 @@ def list_pages(album_id: int, db: Session = Depends(get_db)):
 
 @router.post("/albums/{album_id}/compose")
 def compose(album_id: int, db: Session = Depends(get_db)):
-    """Vuelve a agrupar y a generar lo pendiente, también las páginas con error."""
+    """Regroup and render whatever is pending, including pages with errors."""
     album = _get_album(db, album_id)
     if album.composition_mode != "auto":
         raise HTTPException(400, "invalid_composition_mode")
@@ -327,7 +327,7 @@ def _page_asset(db: Session, page_id: int, rev: Optional[int], thumb: bool):
     path = (composition.page_thumb if thumb else composition.page_file)(page.album_id, page.id, revision)
     if not path.exists():
         raise HTTPException(404, "not_found")
-    # Cada revisión tiene su propio archivo y nunca cambia
+    # Each revision has its own file and never changes
     return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "max-age=604800"})
 
 
@@ -338,5 +338,5 @@ def page_thumb(page_id: int, rev: Optional[int] = None, db: Session = Depends(ge
 
 @router.get("/pages/{page_id}/image")
 def page_image(page_id: int, rev: Optional[int] = None, db: Session = Depends(get_db)):
-    """JPEG generado tal como se sube al TV."""
+    """Generated JPEG exactly as it is uploaded to the TV."""
     return _page_asset(db, page_id, rev, thumb=False)

@@ -35,14 +35,14 @@ def supervise_all():
 
 
 def rotate_all():
-    """Rotación por la app (intervalos menores de 10 min); cada TV decide si le toca cambiar de imagen."""
+    """App-driven rotation (intervals under 10 min); each TV decides whether it is time to change the image."""
     db = SessionLocal()
     try:
         for tv in db.query(Tv).filter(Tv.enabled.is_(True)).all():
             try:
                 rotation.tick(db, tv)
-            except Exception:  # noqa: BLE001 - un TV no debe frenar a los demás
-                logger.exception("Rotación TV %s", tv.id)
+            except Exception:  # noqa: BLE001 - one TV must not hold up the others
+                logger.exception("Rotation TV %s", tv.id)
     finally:
         db.close()
 
@@ -52,25 +52,25 @@ def refresh_sources():
     try:
         rescan_all(db)
     except Exception:  # noqa: BLE001
-        logger.exception("Reescaneo de fuentes")
+        logger.exception("Source rescan")
     finally:
         db.close()
     compose_all()
 
 
 def compose_album(album_id: int):
-    """Agrupa, genera y limpia las composiciones de un álbum, fuera de las peticiones HTTP."""
+    """Group, render and clean up an album's layouts, outside HTTP requests."""
     db = SessionLocal()
     try:
         composition.process_album(db, album_id)
     except Exception:  # noqa: BLE001
-        logger.exception("Composiciones del álbum %s", album_id)
+        logger.exception("Layouts of album %s", album_id)
     finally:
         db.close()
 
 
 def compose_all():
-    """También recupera las páginas que quedaron pendientes tras un reinicio y limpia revisiones viejas."""
+    """Also resumes pages left pending after a restart and cleans up old revisions."""
     db = SessionLocal()
     try:
         ids = [album_id for (album_id,) in db.query(Album.id).order_by(Album.id)]
@@ -81,7 +81,7 @@ def compose_all():
 
 
 def refresh_source(source_id: int):
-    """Reescaneo de una fuente en segundo plano (las de iCloud descargan fotos y tardan)."""
+    """Rescan one source in the background (iCloud sources download photos and take a while)."""
     db = SessionLocal()
     try:
         source = db.get(AlbumSource, source_id)
@@ -89,7 +89,7 @@ def refresh_source(source_id: int):
         if source:
             rescan_source(db, source)
     except Exception:  # noqa: BLE001
-        logger.exception("Reescaneo de la fuente %s", source_id)
+        logger.exception("Rescan of source %s", source_id)
         album_id = None
     finally:
         db.close()
@@ -98,7 +98,7 @@ def refresh_source(source_id: int):
 
 
 def run_now(func, *args):
-    """Ejecuta un trabajo en segundo plano lo antes posible (sin bloquear la petición HTTP)."""
+    """Run a background job as soon as possible (without blocking the HTTP request)."""
     scheduler.add_job(func, args=args, id=f"{func.__name__}-{'-'.join(map(str, args))}",
                       replace_existing=True, max_instances=1, coalesce=True)
 

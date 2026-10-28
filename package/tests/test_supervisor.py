@@ -2,7 +2,7 @@ import unittest
 from contextlib import contextmanager
 from datetime import datetime
 
-import app.main  # noqa: F401 - crea las tablas
+import app.main  # noqa: F401 - creates the tables
 from app.core.database import SessionLocal
 from app.models.schemas import Album, AlbumSource, Image, ScheduleSlot, Tv, TvContent
 from app.services import supervisor

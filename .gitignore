@@ -3,7 +3,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# Datos de runtime (SQLite, secretos, logs) y overrides locales
+# Runtime data (SQLite, secrets, logs) and local overrides
 package/data/
 package/config/config.yaml
 *.db
@@ -19,23 +19,29 @@ build/
 *.apk
 *.egg-info/
 
-# Herramientas
+# Tools
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 .coverage
 htmlcov/
-tools/.spike/
 
-# Entornos virtuales
+# Virtual environments
 venv/
 .venv/
 env/
 
-# SO y editores
+# OS and editors
 .DS_Store
 Thumbs.db
 desktop.ini
 .vscode/
 .idea/
 *.swp
+
+# Local-only notes and test media (not published)
+PLAN.md
+ASUSTOR_AS202TE_APP_TEMPLATE.md
+tools/*.jpeg
+tools/*.jpg
+tools/.spike/

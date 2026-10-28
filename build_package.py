@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-build_package.py - Construye el paquete APKG (.apk) de Asustor ADM con versionado semver.
+build_package.py - Builds the Asustor ADM APKG package (.apk) with semver versioning.
 
-Uso:
+Usage:
     python build_package.py                       # patch: 1.0.0 -> 1.0.1
     python build_package.py --bump minor          # 1.0.0 -> 1.1.0
     python build_package.py --bump major          # 1.0.0 -> 2.0.0
-    python build_package.py --version 1.2.0       # versión exacta
-    python build_package.py --no-bump             # recompila la versión actual
-    python build_package.py -m "Nota del cambio"  # entrada en CONTROL/changelog.txt
+    python build_package.py --version 1.2.0       # exact version
+    python build_package.py --no-bump             # rebuild the current version
+    python build_package.py -m "Change note"      # entry in CONTROL/changelog.txt
 """
 import argparse
 import io
@@ -21,7 +21,7 @@ import zipfile
 from datetime import date
 from pathlib import Path
 
-# Salida UTF-8 segura en consolas Windows
+# Safe UTF-8 output on Windows consoles
 if (sys.stdout.encoding or "").lower() != "utf-8":
     try:
         sys.stdout.reconfigure(encoding="utf-8")
@@ -36,7 +36,7 @@ CONFIG_JSON = CONTROL_DIR / "config.json"
 CHANGELOG_TXT = CONTROL_DIR / "changelog.txt"
 APP_INIT_PY = PACKAGE_DIR / "app" / "__init__.py"
 
-# Nunca se empaquetan: cachés, entornos, tests, datos de runtime y overrides locales
+# Never packaged: caches, environments, tests, runtime data and local overrides
 EXCLUDED_DIR_NAMES = {"__pycache__", ".git", ".pytest_cache", ".mypy_cache", "venv", ".venv", "tests"}
 EXCLUDED_PATHS = {"data", "config/config.yaml"}
 EXCLUDED_SUFFIXES = (".pyc", ".pyo", ".log", ".bak", ".tmp", ".apk", ".db", ".db-wal", ".db-shm")
@@ -44,14 +44,14 @@ EXCLUDED_SUFFIXES = (".pyc", ".pyo", ".log", ".bak", ".tmp", ".apk", ".db", ".db
 
 def load_config() -> dict:
     if not CONFIG_JSON.exists():
-        raise FileNotFoundError(f"No se encontró {CONFIG_JSON}")
+        raise FileNotFoundError(f"{CONFIG_JSON} not found")
     return json.loads(CONFIG_JSON.read_text(encoding="utf-8"))
 
 
 def parse_semver(ver: str):
     m = re.match(r"^(\d+)\.(\d+)\.(\d+)$", ver.strip())
     if not m:
-        raise ValueError(f"Versión inválida: '{ver}' (esperado X.Y.Z)")
+        raise ValueError(f"Invalid version: '{ver}' (expected X.Y.Z)")
     return int(m.group(1)), int(m.group(2)), int(m.group(3))
 
 
@@ -65,7 +65,7 @@ def bump_version(ver: str, kind: str) -> str:
 
 
 def update_version_in_files(new_version: str, note: str, app_name: str):
-    print(f"\n[1/4] Actualizando versión a {new_version}...")
+    print(f"\n[1/4] Updating version to {new_version}...")
 
     config = load_config()
     config.setdefault("general", {})["version"] = new_version
@@ -75,7 +75,7 @@ def update_version_in_files(new_version: str, note: str, app_name: str):
 
     existing = CHANGELOG_TXT.read_text(encoding="utf-8").strip() if CHANGELOG_TXT.exists() else ""
     if not existing.startswith(new_version):
-        entry = f"{new_version} ({date.today().isoformat()})\n- {note or f'Actualización de {app_name}.'}\n\n"
+        entry = f"{new_version} ({date.today().isoformat()})\n- {note or f'{app_name} update.'}\n\n"
         CHANGELOG_TXT.write_text(entry + existing + "\n", encoding="utf-8")
         print(f"  [OK] {CHANGELOG_TXT.relative_to(ROOT_DIR)}")
 
@@ -100,7 +100,7 @@ def _tarinfo(name: str, mode: int, mtime: float, size: int = 0, is_dir: bool = F
 
 
 def build_control_tar() -> bytes:
-    print("\n[2/4] Generando control.tar.gz...")
+    print("\n[2/4] Building control.tar.gz...")
     buf = io.BytesIO()
     with tarfile.open(fileobj=buf, mode="w:gz") as tar:
         for path in sorted(CONTROL_DIR.iterdir()):
@@ -109,7 +109,7 @@ def build_control_tar() -> bytes:
             data = path.read_bytes()
             mode = 0o644
             if path.suffix == ".sh":
-                data = data.replace(b"\r\n", b"\n")  # CRLF rompe /bin/sh en el NAS
+                data = data.replace(b"\r\n", b"\n")  # CRLF breaks /bin/sh on the NAS
                 mode = 0o755
             tar.addfile(_tarinfo(path.name, mode, path.stat().st_mtime, len(data)), io.BytesIO(data))
             print(f"   + {path.name} ({oct(mode)})")
@@ -126,7 +126,7 @@ def _excluded(rel: str) -> bool:
 
 
 def build_data_tar() -> bytes:
-    print("\n[3/4] Generando data.tar.gz...")
+    print("\n[3/4] Building data.tar.gz...")
     buf = io.BytesIO()
     with tarfile.open(fileobj=buf, mode="w:gz") as tar:
         for root, dirs, files in os.walk(PACKAGE_DIR):
@@ -153,7 +153,7 @@ def build_apkg(version: str, config: dict):
     data_bytes = build_data_tar()
     print(f"  [OK] data.tar.gz: {len(data_bytes) / 1024:.1f} KB")
 
-    print("\n[4/4] Creando contenedor .apk...")
+    print("\n[4/4] Creating .apk container...")
     DIST_DIR.mkdir(parents=True, exist_ok=True)
     outputs = [DIST_DIR / f"{pkg}.apk", DIST_DIR / f"{pkg}_{version}_any.apk"]
     for target in outputs:
@@ -164,20 +164,20 @@ def build_apkg(version: str, config: dict):
         print(f"  [OK] dist/{target.name} ({target.stat().st_size / 1024:.1f} KB)")
 
     print("\n" + "=" * 65)
-    print(f" {config['general']['name']} v{version} empaquetado")
+    print(f" {config['general']['name']} v{version} packaged")
     print("=" * 65)
-    print("  1. ADM (http://<IP_NAS>:8000) -> App Central -> Administración -> Instalación manual")
-    print(f"  2. Sube dist/{outputs[1].name} e instala")
-    print(f"  3. Abre http://<IP_NAS>:{port}")
+    print("  1. ADM (http://<NAS_IP>:8000) -> App Central -> Management -> Manual Install")
+    print(f"  2. Upload dist/{outputs[1].name} and install it")
+    print(f"  3. Open http://<NAS_IP>:{port}")
     print("=" * 65 + "\n")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Construye el paquete APKG de Asustor.")
+    parser = argparse.ArgumentParser(description="Builds the Asustor APKG package.")
     parser.add_argument("--bump", choices=["patch", "minor", "major"], default="patch")
-    parser.add_argument("--version", type=str, default=None, help="Versión exacta X.Y.Z")
-    parser.add_argument("--no-bump", action="store_true", help="Mantener la versión actual")
-    parser.add_argument("-m", "--message", type=str, default=None, help="Nota para changelog.txt")
+    parser.add_argument("--version", type=str, default=None, help="Exact version X.Y.Z")
+    parser.add_argument("--no-bump", action="store_true", help="Keep the current version")
+    parser.add_argument("-m", "--message", type=str, default=None, help="Note for changelog.txt")
     args = parser.parse_args()
 
     config = load_config()

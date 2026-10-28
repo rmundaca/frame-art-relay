@@ -13,14 +13,14 @@ router = APIRouter(prefix="/api/settings", tags=["settings"])
 
 
 class AiSettingsIn(BaseModel):
-    api_key: Optional[str] = None  # "" borra la clave; None la deja como está
+    api_key: Optional[str] = None  # "" clears the key; None leaves it unchanged
     model: Optional[str] = None
     max_calls_per_day: Optional[int] = None
 
 
 @router.get("/ai")
 def get_ai():
-    # Nunca se devuelve la clave: solo si está configurada y sus últimos cuatro caracteres
+    # The key is never returned: only whether it is set and its last four characters
     return subject_ai.public_view()
 
 
@@ -30,7 +30,7 @@ def put_ai(req: AiSettingsIn, db: Session = Depends(get_db)):
         subject_ai.save_config(req.api_key, req.model, req.max_calls_per_day)
     except ValueError as exc:
         raise HTTPException(400, str(exc))
-    # Los álbumes que esperaban por un error de Gemini reintentan ya con la configuración nueva
+    # Albums waiting on a Gemini error retry right away with the new settings
     for (album_id,) in db.query(Album.id).filter(Album.subject_detection.is_(True)):
         run_now(compose_album, album_id)
     return subject_ai.public_view()

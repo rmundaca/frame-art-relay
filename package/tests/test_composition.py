@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 from PIL import Image as PILImage
 from sqlalchemy import create_engine, inspect, text
 
-import app.main  # noqa: F401 - crea las tablas
+import app.main  # noqa: F401 - creates the tables
 from app.core.config import settings
 from app.core.database import SessionLocal
 from app.main import app as fastapi_app
@@ -59,16 +59,16 @@ class GroupingTest(unittest.TestCase):
             self.assertEqual(sorted(new[0][1]), list(range(1, len(ratios) + 1)))
 
     def test_landscapes_that_fill_the_screen_stay_single(self):
-        # Dos 3:2 apiladas cubrirían el 36 % del lienzo: individualmente pierden muy poco
+        # Two stacked 3:2 photos would cover 36 % of the canvas: on their own they lose very little
         self.assertEqual(group([(1, LANDSCAPE), (2, LANDSCAPE)]), ({}, []))
         self.assertIsNone(fill_score("pair_h", [16 / 9, 16 / 9]))
 
     def test_odd_counts_and_unmeasured(self):
-        # La vertical sobrante se suma a la pareja en lugar de quedar sola recortada a 16:9
+        # The leftover portrait joins the pair instead of staying alone cropped to 16:9
         keep, new = group([(1, PORTRAIT), (2, PORTRAIT), (3, PORTRAIT), (4, None)])
         self.assertEqual(new, [("trio_v", [1, 2, 3])])
         _, new = group([(i, PORTRAIT) for i in range(1, 6)])
-        self.assertEqual(new, [("pair_v", [1, 2]), ("trio_v", [3, 4, 5])])  # se suma a la pareja más cercana
+        self.assertEqual(new, [("pair_v", [1, 2]), ("trio_v", [3, 4, 5])])  # joins the nearest pair
         _, new = group([(i, PORTRAIT) for i in range(1, 5)])
         self.assertEqual(new, [("pair_v", [1, 2]), ("pair_v", [3, 4])])
 
@@ -131,12 +131,12 @@ class LayoutTest(unittest.TestCase):
             f = composition.crop_factor(template, ratios)
             self.assertTrue(1 - MAX_CROP - 1e-9 <= f <= 1 / (1 - MAX_CROP) + 1e-9)
             for (x, y, w, h), r in zip(boxes, ratios):
-                # Todas las celdas con el mismo recorte, como mucho MAX_CROP por eje
+                # Every cell has the same crop, at most MAX_CROP per axis
                 self.assertAlmostEqual(w / h, r * f, delta=0.01)
                 self.assertGreaterEqual(min(x, y), MARGIN - 1)
                 self.assertLessEqual(x + w, FRAME_SIZE[0] - MARGIN + 1)
                 self.assertLessEqual(y + h, FRAME_SIZE[1] - MARGIN + 1)
-            # El grupo toca el margen en al menos un eje: no queda más fondo del inevitable
+            # The group touches the margin on at least one axis: no more background than unavoidable
             self.assertLessEqual(min(min(x for x, _, _, _ in boxes), min(y for _, y, _, _ in boxes)), MARGIN + 1)
             if template in ("pair_v", "duo_vh"):
                 self.assertAlmostEqual(boxes[1][0] - (boxes[0][0] + boxes[0][2]), GAP, delta=1)
@@ -144,11 +144,11 @@ class LayoutTest(unittest.TestCase):
                 self.assertAlmostEqual(boxes[1][1] - (boxes[0][1] + boxes[0][3]), GAP, delta=1)
 
     def test_crop_fills_the_canvas_better(self):
-        # Fotos de iPhone (3:4 y 4:3): fondo lateral de trio_v2h de 518 px sin recorte, unos 276 px con él
+        # iPhone photos (3:4 and 4:3): trio_v2h side background of 518 px without cropping, about 276 px with it
         boxes = layout("trio_v2h", [0.75, 4 / 3, 4 / 3])
         self.assertAlmostEqual(boxes[0][0], 276, delta=8)
         self.assertEqual(composition.crop_factor("trio_v2h", [0.75, 4 / 3, 4 / 3]), 1 / (1 - MAX_CROP))
-        # Si el recorte basta, el grupo llena el recuadro útil entero
+        # If the crop is enough, the group fills the whole usable area
         boxes = layout("trio_v", [PORTRAIT] * 3)
         self.assertEqual((boxes[0][0], boxes[0][1]), (MARGIN, MARGIN))
         self.assertAlmostEqual(boxes[2][0] + boxes[2][2], FRAME_SIZE[0] - MARGIN, delta=1)
@@ -248,7 +248,7 @@ class LifecycleTest(CompositionDbMixin, unittest.TestCase):
         self.assertEqual((updated[0], updated[2]), (first[0], first[2] + 1))
         page = self.pages()[0]
         self.assertEqual((page.status, page.rendered_revision), ("ready", 2))
-        # La revisión anterior no la usa ningún TV: se limpia
+        # No TV uses the previous revision: it is cleaned up
         self.assertFalse(composition.page_file(self.album.id, page.id, 1).exists())
 
     def test_exclusion_dissolves_page_and_original_files_stay(self):
@@ -280,7 +280,7 @@ class LifecycleTest(CompositionDbMixin, unittest.TestCase):
         self.rescan()
         kept, regrouped = self.snapshot()
         self.assertEqual(kept, first)
-        # La vertical que queda sola aprovecha la horizontal que estaba individual
+        # The portrait left alone takes the landscape that was single
         self.assertEqual(regrouped[1], "duo_vh")
         self.assertNotEqual(regrouped[0], second[0])
         self.assertEqual(self.db.get(CompositionPage, second[0]), None)
@@ -292,7 +292,7 @@ class LifecycleTest(CompositionDbMixin, unittest.TestCase):
         page.status = "pending"
         page.revision += 1
         self.db.commit()
-        (self.root / "a.jpg").unlink()  # sin reescanear: el archivo desaparece durante la generación
+        (self.root / "a.jpg").unlink()  # without rescanning: the file disappears during rendering
         composition.render_pending(self.db, self.album.id)
         self.assertEqual((page.status, page.last_error), ("error", "composition_source_unavailable"))
         out = composition.effective_output(self.db, self.album)
@@ -306,7 +306,7 @@ class LifecycleTest(CompositionDbMixin, unittest.TestCase):
         (self.root / "a.jpg").write_bytes((self.root / "a.jpg").read_bytes()[:400])  # JPEG truncado
         composition.render_pending(self.db, self.album.id)
         self.assertEqual((page.status, page.last_error), ("error", "composition_render_failed"))
-        # La última versión válida sigue disponible para la vista previa y los TVs
+        # The last valid version stays available for the preview and the TVs
         self.assertTrue(composition.page_file(self.album.id, page.id, page.rendered_revision).exists())
 
     def test_restart_during_generation_is_recovered(self):
@@ -322,7 +322,7 @@ class LifecycleTest(CompositionDbMixin, unittest.TestCase):
         self.assertEqual([p for p in composition.cache_dir(self.album.id).iterdir() if p.suffix == ".tmp"], [])
 
     def test_jobs_for_different_albums_do_not_render_at_once(self):
-        other = Album(name="Otro", composition_mode="auto")
+        other = Album(name="Other", composition_mode="auto")
         self.db.add(other)
         self.db.commit()
         active, peak = [0], [0]
@@ -377,7 +377,7 @@ class CompositionSyncTest(CompositionDbMixin, unittest.TestCase):
 
     def test_grouped_originals_are_not_uploaded(self):
         result = self.sync()
-        self.assertEqual(result.uploaded, 2)  # una página y la horizontal individual
+        self.assertEqual(result.uploaded, 2)  # one page and the single landscape
         page = self.pages()[0]
         keys = {(r.page_id, r.page_revision, r.image_id) for r in self.rows()}
         self.assertEqual(keys, {(page.id, 1, None), (None, None, self.image("c.jpg").id)})
@@ -391,7 +391,7 @@ class CompositionSyncTest(CompositionDbMixin, unittest.TestCase):
         self.assertEqual(len(self.rows()), 3)
         self.album.composition_mode = "auto"
         self.db.commit()
-        # Sin agrupación todavía: no se toca nada
+        # No grouping yet: nothing is touched
         result = self.sync()
         self.assertFalse(result.changed)
         self.assertEqual(len(self.rows()), 3)
@@ -423,7 +423,7 @@ class CompositionSyncTest(CompositionDbMixin, unittest.TestCase):
         from app.services.tv_client import TvError
         with self.assertRaises(TvError):
             self.sync()
-        # Sin espacio o sin conexión: la versión anterior sigue en el TV
+        # No space or no connection: the previous version stays on the TV
         self.assertTrue(old <= set(self.client.photos))
         self.client.fail_upload = False
         result = self.sync()
@@ -457,7 +457,7 @@ class CompositionSyncTest(CompositionDbMixin, unittest.TestCase):
         self.sync(self.tv2, self.client2)
         make_photo(self.root / "a.jpg", (800, 1200), (250, 250, 0))
         self.rescan()
-        self.sync()  # el TV B sigue sin actualizar (apagado)
+        self.sync()  # TV B is still not updated (off)
         page = self.pages()[0]
         composition.cleanup(self.db, self.album.id)
         self.assertTrue(composition.page_file(self.album.id, page.id, 1).exists())

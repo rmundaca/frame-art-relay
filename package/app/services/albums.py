@@ -1,4 +1,4 @@
-"""Escaneo de fuentes y miniaturas de las imágenes de los álbumes."""
+"""Source scanning and thumbnails for album images."""
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -18,7 +18,7 @@ def thumb_path(image_id: int) -> Path:
 
 
 def album_images(db: Session, album: Album) -> list:
-    """Imágenes incluidas que pueden ir al TV, con el tope por álbum, en orden de clave."""
+    """Included images that may go to the TV, capped per album, ordered by key."""
     limit = int(settings.get("frame", {}).get("max_images_per_album", 100))
     return (db.query(Image).filter(Image.album_id == album.id, Image.excluded.is_(False))
             .order_by(Image.key).limit(limit).all())
@@ -32,31 +32,31 @@ def image_file(db: Session, image: Image) -> Path:
 
 
 def ensure_meta(db: Session, image: Image) -> bool:
-    """Lee una vez de la cabecera las dimensiones orientadas y la fecha de la toma. False si no se pudo."""
+    """Read the oriented dimensions and date taken from the header, once. False if it failed."""
     if image.width and image.height and image.taken_at is not None:
         return True
     try:
         image.width, image.height, image.taken_at = image_meta(image_file(db, image))
     except (ValueError, OSError) as exc:
-        logger.info("Sin metadatos para %s: %s", image.key, exc)
-        # Ilegible: sin fecha, para no bloquear la salida; se reintenta al cambiar el archivo
+        logger.info("No metadata for %s: %s", image.key, exc)
+        # Unreadable: no date, so the output is not blocked; retried when the file changes
         image.taken_at = ""
         return False
     return True
 
 
 def wants_date(db: Session, album: Album, image: Image) -> bool:
-    """La marca de fecha es solo para las fotos de iCloud de los álbumes que la tienen activada."""
+    """The date stamp only applies to iCloud photos in albums that have it turned on."""
     return bool(album.date_stamp) and db.get(AlbumSource, image.source_id).kind == "icloud"
 
 
 def date_label(db: Session, album: Album, image: Image) -> str:
-    """"YYYY-MM-DD" que se dibuja en la foto, o "" si no lleva fecha."""
+    """"YYYY-MM-DD" to draw on the photo, or "" if it has no date."""
     return (image.taken_at or "")[:10] if wants_date(db, album, image) else ""
 
 
 def fill_meta(db: Session, album: Album) -> None:
-    """Completa los metadatos pendientes de las fotos que van al TV (tras reescanear o migrar la base)."""
+    """Fill in pending metadata for the photos that go to the TV (after a rescan or a database migration)."""
     changed = False
     for image in album_images(db, album):
         if image.taken_at is None:
@@ -82,12 +82,12 @@ def _scan(source: AlbumSource) -> list:
 
 
 def rescan_source(db: Session, source: AlbumSource) -> None:
-    """Sincroniza las filas Image con los archivos; conserva el estado "excluida" de las que siguen."""
+    """Sync Image rows with the files; keep the "excluded" flag of the ones that remain."""
     try:
         found = {key: (size, mtime) for key, size, mtime in _scan(source)}
         source.last_error = None
     except (ValueError, OSError, source_icloud.ICloudError) as exc:
-        logger.warning("No se pudo escanear %s: %s", source.path, exc)
+        logger.warning("Could not scan %s: %s", source.path, exc)
         source.last_error = str(exc) if isinstance(exc, (ValueError, source_icloud.ICloudError)) else "invalid_path"
         source.last_scan = datetime.utcnow()
         db.commit()

@@ -20,7 +20,7 @@ class Tv(Base):
     last_state = Column(String, nullable=True)
     last_seen = Column(DateTime, nullable=True)
     last_error = Column(Text, nullable=True)
-    # Firma "album:intervalo:orden" u "off" de la última rotación aplicada
+    # Signature "album:interval:order" or "off" of the last rotation applied
     applied = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
@@ -36,18 +36,18 @@ class Album(Base):
     shuffle = Column(Boolean, default=True, nullable=False)
     interval = Column(Integer, default=60, nullable=False)  # minutos
     composition_mode = Column(String, default="off", nullable=False)  # off | auto
-    date_stamp = Column(Boolean, default=True, nullable=False)  # fecha de la toma en las fotos de iCloud
+    date_stamp = Column(Boolean, default=True, nullable=False)  # date taken on iCloud photos
     background = Column(String, default="paper", nullable=False)  # paper | blur
-    single_fit = Column(String, default="crop", nullable=False)  # crop | fit (fotos sueltas completas)
-    subject_detection = Column(Boolean, default=False, nullable=False)  # recortes orientados por Gemini
-    subject_error = Column(String, nullable=True)  # último error de la detección (código), None si fue bien
-    # Firma de las fotos candidatas con la que se calculó la última agrupación
+    single_fit = Column(String, default="crop", nullable=False)  # crop | fit (single photos shown whole)
+    subject_detection = Column(Boolean, default=False, nullable=False)  # crops guided by Gemini
+    subject_error = Column(String, nullable=True)  # last detection error (code), None if it succeeded
+    # Signature of the candidate photos used for the last grouping
     composition_plan = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     sources = relationship("AlbumSource", cascade="all, delete-orphan", passive_deletes=True,
                            order_by="AlbumSource.id")
-    # Las imágenes pertenecen a la fuente; las franjas se borran por ON DELETE CASCADE
+    # Images belong to the source; slots are deleted by ON DELETE CASCADE
     images = relationship("Image", viewonly=True, order_by="Image.key")
 
 
@@ -57,8 +57,8 @@ class AlbumSource(Base):
     id = Column(Integer, primary_key=True)
     album_id = Column(Integer, ForeignKey("albums.id", ondelete="CASCADE"), nullable=False, index=True)
     kind = Column(String, default="local", nullable=False)
-    path = Column(String, nullable=False)  # carpeta del NAS o URL del álbum compartido de iCloud
-    label = Column(String, nullable=True)  # nombre del álbum de iCloud
+    path = Column(String, nullable=False)  # NAS folder or iCloud shared album URL
+    label = Column(String, nullable=True)  # iCloud album name
     recursive = Column(Boolean, default=False, nullable=False)
     last_scan = Column(DateTime, nullable=True)
     last_error = Column(String, nullable=True)
@@ -73,15 +73,15 @@ class Image(Base):
     id = Column(Integer, primary_key=True)
     album_id = Column(Integer, ForeignKey("albums.id", ondelete="CASCADE"), nullable=False, index=True)
     source_id = Column(Integer, ForeignKey("album_sources.id", ondelete="CASCADE"), nullable=False, index=True)
-    key = Column(String, nullable=False)  # ruta relativa a la fuente
+    key = Column(String, nullable=False)  # path relative to the source
     size = Column(Integer, nullable=True)
     mtime = Column(Float, nullable=True)
-    # Dimensiones tras aplicar EXIF; se borran al cambiar el archivo
+    # Dimensions after applying EXIF; cleared when the file changes
     width = Column(Integer, nullable=True)
     height = Column(Integer, nullable=True)
-    # Fecha de la toma del EXIF ("YYYY-MM-DDTHH:MM:SS"); "" si no tiene, None si todavía no se leyó
+    # EXIF date taken ("YYYY-MM-DDTHH:MM:SS"); "" if none, None if not read yet
     taken_at = Column(String, nullable=True)
-    # Recuadro del sujeto según Gemini ("[x0, y0, x1, y1]" en 0-1, "" si no hay) y versión de la foto analizada
+    # Subject box from Gemini ("[x0, y0, x1, y1]" in 0-1, "" if none) and version of the analysed photo
     subject_box = Column(String, nullable=True)
     subject_sig = Column(String, nullable=True)
     excluded = Column(Boolean, default=False, nullable=False)
@@ -89,35 +89,35 @@ class Image(Base):
 
 
 class TvContent(Base):
-    """Imagen subida por la app a "Mis fotos" de un TV."""
+    """Image uploaded by the app to a TV's "My Photos"."""
     __tablename__ = "tv_contents"
     __table_args__ = (UniqueConstraint("tv_id", "content_id"),)
 
     id = Column(Integer, primary_key=True)
     tv_id = Column(Integer, ForeignKey("tvs.id", ondelete="CASCADE"), nullable=False, index=True)
     image_id = Column(Integer, ForeignKey("images.id", ondelete="SET NULL"), nullable=True, index=True)
-    # Composición subida en lugar de una imagen individual, con la revisión que tiene el TV
+    # Layout uploaded instead of a single image, with the revision the TV has
     page_id = Column(Integer, ForeignKey("composition_pages.id", ondelete="SET NULL"), nullable=True, index=True)
     page_revision = Column(Integer, nullable=True)
-    # Variante de la imagen individual subida (por ejemplo, con la fecha dibujada); None es la original
+    # Variant of the uploaded single image (e.g. with the date drawn); None is the original
     render_sig = Column(String, nullable=True)
     content_id = Column(String, nullable=False)
     uploaded_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
 class CompositionPage(Base):
-    """Página generada con varias fotos de un álbum. La identidad es la fila; cada cambio crea una revisión."""
+    """Page rendered from several album photos. The row is the identity; every change creates a revision."""
     __tablename__ = "composition_pages"
 
     id = Column(Integer, primary_key=True)
     album_id = Column(Integer, ForeignKey("albums.id", ondelete="CASCADE"), nullable=False, index=True)
     template = Column(String, nullable=False)
-    signature = Column(String, nullable=False)  # integrantes y versiones, plantilla y renderizador
+    signature = Column(String, nullable=False)  # members and versions, template and renderer
     revision = Column(Integer, default=1, nullable=False)
-    # pending | ready | error | retired (fuera de la salida; se borra cuando ningún TV la usa)
+    # pending | ready | error | retired (out of the output; deleted once no TV uses it)
     status = Column(String, default="pending", nullable=False)
     last_error = Column(String, nullable=True)
-    rendered_revision = Column(Integer, nullable=True)  # revisión cuyo JPEG existe en la caché
+    rendered_revision = Column(Integer, nullable=True)  # revision whose JPEG exists in the cache
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
@@ -132,7 +132,7 @@ class CompositionMember(Base):
     id = Column(Integer, primary_key=True)
     page_id = Column(Integer, ForeignKey("composition_pages.id", ondelete="CASCADE"), nullable=False, index=True)
     image_id = Column(Integer, ForeignKey("images.id", ondelete="CASCADE"), nullable=False, index=True)
-    position = Column(Integer, nullable=False)  # celda de la plantilla
+    position = Column(Integer, nullable=False)  # template cell
 
 
 class ScheduleSlot(Base):
@@ -147,7 +147,7 @@ class ScheduleSlot(Base):
     enabled = Column(Boolean, default=True, nullable=False)
 
 
-# Columnas añadidas después de la primera versión: tabla -> [(nombre, DDL SQLite)]
+# Columns added after the first release: table -> [(name, SQLite DDL)]
 _NEW_COLUMNS = {
     "album_sources": [("label", "VARCHAR")],
     "albums": [("composition_mode", "VARCHAR NOT NULL DEFAULT 'off'"), ("composition_plan", "VARCHAR"),
@@ -160,14 +160,14 @@ _NEW_COLUMNS = {
                     ("page_revision", "INTEGER"), ("render_sig", "VARCHAR")],
 }
 
-# Sentencias idempotentes para corregir datos heredados
+# Idempotent statements that fix legacy data
 _DATA_FIXES = [
     # "UPDATE albums SET status = 'active' WHERE status IS NULL",
 ]
 
 
 def init_db_migrations(engine):
-    """Agrega columnas nuevas y corrige datos heredados en bases SQLite existentes."""
+    """Add new columns and fix legacy data in existing SQLite databases."""
     inspector = inspect(engine)
     tables = inspector.get_table_names()
     with engine.begin() as conn:

@@ -159,7 +159,7 @@ def tv_status(tv_id: int, db: Session = Depends(get_db)):
             tv.last_seen = datetime.utcnow()
         db.commit()
     except TvError:
-        pass  # ocupado: se devuelve el último estado conocido
+        pass  # busy: return the last known state
     return tv_view(tv, db)
 
 
@@ -224,7 +224,7 @@ def gallery_thumb(tv_id: int, content_id: str, db: Session = Depends(get_db)):
     path = _tv_thumb_path(tv.id, content_id)
     if not path.exists():
         try:
-            # Con la API 0.97 la "miniatura" es la imagen casi completa: se reduce y se guarda
+            # With API 0.97 the "thumbnail" is the almost full-size image: shrink it and cache it
             make_thumbnail(client_for(tv).thumbnail(content_id), path)
         except TvError as exc:
             raise _tv_error(exc)
@@ -252,12 +252,12 @@ def gallery_delete(tv_id: int, req: DeleteIn, db: Session = Depends(get_db)):
         image_ids = [r.image_id for r in rows if r.image_id]
         page_ids = [r.page_id for r in rows if r.page_id]
         if page_ids:
-            # Borrar una composición excluye sus fotos; los archivos originales no se tocan
+            # Deleting a layout excludes its photos; the original files are not touched
             image_ids += [i for (i,) in db.query(CompositionMember.image_id)
                           .filter(CompositionMember.page_id.in_(page_ids))]
         albums = set()
         if image_ids:
-            # Se excluyen del álbum para que el supervisor no las vuelva a subir
+            # Excluded from the album so the supervisor does not upload them again
             albums = {a for (a,) in db.query(Image.album_id).filter(Image.id.in_(image_ids)).distinct()}
             db.query(Image).filter(Image.id.in_(image_ids)).update({Image.excluded: True},
                                                                   synchronize_session=False)

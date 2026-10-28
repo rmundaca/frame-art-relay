@@ -69,7 +69,7 @@ class ICloudTest(unittest.TestCase):
                 source_icloud.parse_token(bad)
 
     def test_partition(self):
-        # "0z" en base 62 = 61
+        # "0z" in base 62 = 61
         self.assertTrue(source_icloud.base_url(TOKEN).startswith("https://p61-sharedstreams.icloud.com/"))
         self.assertTrue(source_icloud.base_url("Ab" + TOKEN[2:]).startswith("https://p37-"))
 
@@ -143,7 +143,7 @@ class FakeCloud:
             rank = body["query"]["filterBy"][1]["fieldValue"]["value"]
             records = []
             if not self.empty_page:
-                # Una foto por pagina aunque se hayan pedido mas resultados.
+                # One photo per page even if more results were requested.
                 fields = {"dataClassType": {"value": 2 if rank in self.video_ranks else 1}}
                 for prefix, width in (("resJPEGThumb", 480), ("resJPEGMed", 2048)):
                     fields.update({

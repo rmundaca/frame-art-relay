@@ -12,7 +12,7 @@ class Slot:
 
 
 class ScheduleTest(unittest.TestCase):
-    # 2026-10-26 es lunes
+    # 2026-10-26 is a Monday
     def at(self, day, hhmm):
         h, m = map(int, hhmm.split(":"))
         return datetime(2026, 10, 26 + day, h, m)

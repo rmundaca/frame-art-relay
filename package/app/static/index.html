@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -16,7 +16,7 @@
     <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png">
     <link rel="manifest" href="/static/manifest.json">
     <script>
-        // Tema elegido en Ajustes, aplicado antes de pintar para evitar parpadeo
+        // Theme chosen in Settings, applied before first paint to avoid a flash
         try {
             var theme = localStorage.getItem('fa_theme');
             if (theme === 'light' || theme === 'dark') {
@@ -25,7 +25,7 @@
                     m.setAttribute('content', theme === 'dark' ? '#0b0f19' : '#eef1f6');
                 });
             }
-        } catch (e) { /* sin almacenamiento: sigue al sistema */ }
+        } catch (e) { /* no storage: follow the system */ }
     </script>
     <link rel="stylesheet" href="/static/css/app.css">
 </head>
@@ -34,6 +34,7 @@
         <div class="topbar-inner">
             <div class="brand">
                 <img src="/static/icon.png" alt="" width="28" height="28">
+                <span class="brand-name">Frame Art</span>
             </div>
             <div class="small-title" id="smallTitle" aria-hidden="true"></div>
             <div class="topbar-actions">
@@ -70,7 +71,10 @@
                 <div class="grabber" aria-hidden="true"></div>
                 <div class="sheet-title-row">
                     <h2 id="sheetTitle"></h2>
-                    <button type="button" class="round-btn small" data-close aria-label="Cerrar">
+                    <button type="button" class="round-btn small" id="sheetHelp" aria-expanded="false" hidden>
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></svg>
+                    </button>
+                    <button type="button" class="round-btn small" id="sheetClose" data-close aria-label="Close">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
                     </button>
                 </div>

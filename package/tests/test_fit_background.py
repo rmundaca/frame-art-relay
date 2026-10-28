@@ -1,4 +1,4 @@
-"""Fase 11.3: fotos sueltas completas (single_fit = "fit") y fondo desenfocado."""
+"""Single photos shown whole (single_fit = "fit") and blurred background."""
 import io
 import unittest
 
@@ -45,7 +45,7 @@ class SingleFitTest(CompositionDbMixin, unittest.TestCase):
         self.assertEqual(self.sync().uploaded, 2)
         rows = self.uploads()
         self.assertEqual(rows["v.jpg"].render_sig, "fit2:0.15:paper")
-        self.assertIsNone(rows["h.jpg"].render_sig)  # 4:3 pierde el 25 %: sigue llenando la pantalla
+        self.assertIsNone(rows["h.jpg"].render_sig)  # 4:3 loses 25 %: still fills the screen
         vertical = self.picture(rows["v.jpg"])
         self.assertEqual(vertical.size, FRAME_SIZE)
         (x, y, w, h), = layout("single", [900 / 1600])
@@ -72,7 +72,7 @@ class SingleFitTest(CompositionDbMixin, unittest.TestCase):
         row = self.uploads()["v.jpg"]
         self.assertEqual(row.render_sig, "fit2:0.15:blur")
         side = self.picture(row).getpixel((MARGIN, FRAME_SIZE[1] // 2))
-        # Rojo oscurecido, no el papel
+        # Darkened red, not the paper
         self.assertGreater(side[0], side[2] + 60)
         self.assertFalse(near(side, BACKGROUND))
 

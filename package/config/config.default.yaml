@@ -4,18 +4,18 @@ app:
   debug: false
 
 media:
-  # Carpetas del NAS que se pueden elegir como fuente de un álbum
+  # NAS folders that can be chosen as an album source
   roots:
     - "/volume1"
 
 frame:
-  # "Mis fotos" del TV tiene espacio limitado
+  # The TV's "My Photos" has limited space
   max_images_per_album: 100
-  # Subidas por ciclo del supervisor, para no bloquear a los demás TV
+  # Uploads per supervisor cycle, so other TVs are not blocked
   uploads_per_tick: 10
   request_timeout: 15
   upload_timeout: 120
 
 icloud:
-  # Fotos descargadas por álbum compartido (se guardan en data/cache/icloud)
+  # Photos downloaded per shared album (stored in data/cache/icloud)
   max_photos: 300

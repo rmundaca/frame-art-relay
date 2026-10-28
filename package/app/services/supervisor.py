@@ -1,4 +1,4 @@
-"""Decide qué hacer con cada TV según su estado y la franja activa (se ejecuta cada minuto)."""
+"""Decides what to do with each TV based on its state and the active slot (runs every minute)."""
 import logging
 from datetime import datetime
 
@@ -17,7 +17,7 @@ def rotation_signature(album: Album) -> str:
 
 
 def native_minutes(album: Album) -> int:
-    """Intervalo del slideshow nativo; 0 (desactivado) cuando la rotación la hace la app."""
+    """Native slideshow interval; 0 (off) when the app does the rotation."""
     return album.interval if album.interval >= NATIVE_MIN else 0
 
 
@@ -30,7 +30,7 @@ def tick(db: Session, tv: Tv, now: datetime = None, client_factory=client_for) -
             if state != "offline":
                 tv.last_seen = datetime.utcnow()
             else:
-                # Al volver a encenderse se reaplica la rotación
+                # When it comes back on, the rotation is re-applied
                 tv.applied = None
 
             slots = db.query(ScheduleSlot).filter(ScheduleSlot.tv_id == tv.id).all()
@@ -49,14 +49,14 @@ def tick(db: Session, tv: Tv, now: datetime = None, client_factory=client_for) -
                         logger.info("TV %s: +%d -%d (pendientes %d)", tv.name, result.uploaded,
                                     result.deleted, result.pending)
             elif state == "art" and tv.applied != "off":
-                # Fuera de horario: sin rotación y en modo arte; el sensor de movimiento apaga la pantalla
+                # Outside the schedule: no rotation and art mode; the motion sensor turns the screen off
                 client.set_rotation(0, False)
                 tv.applied = "off"
         tv.last_error = None
     except TvError as exc:
         if exc.code != "tv_busy":
             tv.last_error = exc.code
-    except Exception as exc:  # noqa: BLE001 - el supervisor no debe caerse por un TV
+    except Exception as exc:  # noqa: BLE001 - the supervisor must not crash because of one TV
         logger.exception("Supervisor TV %s", tv.name)
         tv.last_error = type(exc).__name__
     finally:

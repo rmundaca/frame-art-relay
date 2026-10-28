@@ -1,4 +1,4 @@
-"""Fase 11.4: detección del sujeto con Gemini y recortes orientados."""
+"""Subject detection with Gemini and guided crops."""
 import base64
 import io
 import json
@@ -57,17 +57,17 @@ class ParseAndCenteringTest(unittest.TestCase):
             self.assertEqual(str(ctx.exception), "gemini_response_invalid")
 
     def test_window_keeps_the_subject(self):
-        # Vertical 3:4 recortada a 16:9: queda visible el 42 % del alto
+        # Portrait 3:4 cropped to 16:9: 42 % of the height stays visible
         self.assertEqual(centering(None, 0.75, 16 / 9), (0.5, 0.5))
         _, cy = centering([0.3, 0.05, 0.7, 0.3], 0.75, 16 / 9)
         self.assertEqual(cy, 0.0)
         _, cy = centering([0.3, 0.7, 0.7, 0.95], 0.75, 16 / 9)
         self.assertEqual(cy, 1.0)
-        # Sujeto más alto que la ventana: se conserva su parte superior (las cabezas)
+        # Subject taller than the window: its top part (the heads) is kept
         visible = 0.75 / (16 / 9)
         _, cy = centering([0.3, 0.2, 0.7, 0.9], 0.75, 16 / 9)
         self.assertAlmostEqual(cy * (1 - visible), 0.2 - composition.SUBJECT_PAD, places=6)
-        # Horizontal recortada por los lados, sujeto a la derecha
+        # Landscape cropped at the sides, subject on the right
         cx, cy = centering([0.8, 0.2, 0.95, 0.8], 16 / 9, 0.75)
         self.assertEqual((cx, cy), (1.0, 0.5))
 
@@ -138,7 +138,7 @@ class ClientTest(AiConfigMixin, unittest.TestCase):
             with self.assertRaises(subject_ai.SubjectError) as ctx:
                 subject_ai.detect(self.photo, client)
         self.assertEqual(str(ctx.exception), "gemini_quota_exceeded")
-        self.assertEqual(len(self.requests), 5)  # la sexta no llega a enviarse
+        self.assertEqual(len(self.requests), 5)  # the sixth is never sent
 
 
 class DetectionFlowTest(AiConfigMixin, CompositionDbMixin, unittest.TestCase):
@@ -151,7 +151,7 @@ class DetectionFlowTest(AiConfigMixin, CompositionDbMixin, unittest.TestCase):
         self.db.add(self.tv)
         self.db.commit()
         self.client = RecordingClient()
-        # Vertical con el sujeto (rojo) arriba: el recorte al centro lo perdería
+        # Portrait with the subject (red) at the top: a centre crop would lose it
         img = PILImage.new("RGB", (900, 1600), BLUE)
         img.paste(RED, (0, 0, 900, 400))
         self.root.joinpath("v.jpg").parent.mkdir(parents=True, exist_ok=True)
@@ -174,13 +174,13 @@ class DetectionFlowTest(AiConfigMixin, CompositionDbMixin, unittest.TestCase):
         with self.fake_detect([0.1, 0.02, 0.9, 0.24]):
             self.rescan()
             composition.process_album(self.db, self.album.id)
-        self.assertEqual(self.calls, ["v.jpg"])  # una sola consulta por versión de la foto
+        self.assertEqual(self.calls, ["v.jpg"])  # a single request per photo version
         img = self.image("v.jpg")
         self.assertEqual(json.loads(img.subject_box), [0.1, 0.02, 0.9, 0.24])
         self.sync_tv()
         row, picture = self.uploaded()
         self.assertIn("subj=0.100,0.020,0.900,0.240", row.render_sig)
-        self.assertGreater(picture.getpixel((1920, 60))[0], 150)  # arriba se ve el sujeto rojo
+        self.assertGreater(picture.getpixel((1920, 60))[0], 150)  # the red subject is visible at the top
 
     def test_waits_for_detection_then_continues_centered_on_failure(self):
         self.rescan_only()
@@ -193,7 +193,7 @@ class DetectionFlowTest(AiConfigMixin, CompositionDbMixin, unittest.TestCase):
         self.sync_tv()
         row, picture = self.uploaded()
         self.assertEqual(row.render_sig, None)
-        self.assertGreater(picture.getpixel((1920, 1080))[2], 150)  # al centro: azul
+        self.assertGreater(picture.getpixel((1920, 1080))[2], 150)  # centre: blue
 
     def test_invalid_answer_for_one_photo_is_not_retried(self):
         self.rescan_only()

@@ -1,11 +1,11 @@
-"""Rotación por la app para intervalos menores que el mínimo del TV (fase 11.2).
+"""App-driven rotation for intervals shorter than the TV minimum.
 
-El slideshow nativo no baja de 10 minutos. Para 1-5 minutos el supervisor lo desactiva y esta tarea muestra la
-siguiente imagen con select_image. Cambiar de imagen, e incluso conectarse al canal de arte, enciende la pantalla
-aunque el sensor de movimiento la haya apagado. Por eso solo se rota con el TV en estado "art": state() consulta
-primero REST, que no responde con la pantalla apagada, y en ese caso no toca el canal de arte.
+The native slideshow does not go below 10 minutes. For 1-5 minutes the supervisor turns it off and this task shows
+the next image with select_image. Changing the image, and even connecting to the art channel, turns the screen on
+even if the motion sensor turned it off. So rotation only happens with the TV in the "art" state: state() queries
+REST first, which does not answer with the screen off, and in that case does not touch the art channel.
 
-El orden vive en memoria por TV: un reinicio empieza un mazo nuevo.
+The order lives in memory per TV: a restart starts a new deck.
 """
 import logging
 import random
@@ -22,7 +22,7 @@ from app.services.tv_client import NATIVE_MIN, TvError, client_for
 
 logger = logging.getLogger("rotation")
 
-# Espera máxima por el canal de arte: si el supervisor está subiendo fotos, se prueba en la vuelta siguiente
+# Maximum wait for the art channel: if the supervisor is uploading photos, try again next round
 BUSY_WAIT = 2
 
 
@@ -44,14 +44,14 @@ _guard = threading.Lock()
 
 
 def playlist(db: Session, tv_id: int, album: Album) -> list:
-    """content_id en el TV de la salida actual del álbum, en su orden. No incluye fotos ajenas ni retiradas."""
+    """TV content_ids of the album's current output, in order. Excludes foreign and retired photos."""
     on_tv = {row_key(r): r.content_id for r in db.query(TvContent).filter(TvContent.tv_id == tv_id)}
     return [on_tv[item.key] for item in effective_output(db, album).items if item.key in on_tv]
 
 
 def next_content(deck: Deck, items: list, rng=random) -> str:
-    """Siguiente imagen: la que sigue a la actual o, en aleatorio, la siguiente de un mazo barajado que no se
-    repite hasta agotarse ni vuelve a empezar por la que se está viendo."""
+    """Next image: the one after the current one or, when shuffling, the next from a shuffled deck that does not
+    repeat until exhausted and never restarts with the one on screen."""
     if not deck.shuffle:
         if deck.current in items:
             return items[(items.index(deck.current) + 1) % len(items)]
@@ -66,7 +66,7 @@ def next_content(deck: Deck, items: list, rng=random) -> str:
 
 
 def tick(db: Session, tv, now: datetime = None, client_factory=client_for, rng=random) -> bool:
-    """Cambia la imagen si toca. Devuelve True si la cambió."""
+    """Change the image if it is time. Returns True if it changed."""
     now = now or datetime.now()
     slots = db.query(ScheduleSlot).filter(ScheduleSlot.tv_id == tv.id).all()
     slot = active_slot(slots, now)
@@ -77,7 +77,7 @@ def tick(db: Session, tv, now: datetime = None, client_factory=client_for, rng=r
             return False
         deck = _decks.get(tv.id)
         if not deck or deck.album_id != album.id or deck.shuffle != album.shuffle:
-            # Álbum nuevo en la franja: el primer cambio llega tras un intervalo completo
+            # New album in the slot: the first change comes after a full interval
             _decks[tv.id] = Deck(album.id, album.shuffle, now)
             return False
     if now - deck.last_change < timedelta(minutes=album.interval):
@@ -86,7 +86,7 @@ def tick(db: Session, tv, now: datetime = None, client_factory=client_for, rng=r
     try:
         with client.session(wait=BUSY_WAIT):
             if client.state() != "art":
-                return False  # pantalla apagada por el sensor, en uso o apagado: se reintenta en la vuelta siguiente
+                return False  # screen turned off by the sensor, in use or off: retry next round
             items = playlist(db, tv.id, album)
             if len(items) < 2:
                 deck.last_change = now

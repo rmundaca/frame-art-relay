@@ -30,12 +30,12 @@ start() {
     cd "$APKG_PATH" || exit 1
     mkdir -p data
 
-    # Rotación mínima: conserva un único log anterior si supera 5 MB
+    # Minimal log rotation: keep a single previous log once it exceeds 5 MB
     if [ -f "$LOG_FILE" ] && [ "$(wc -c < "$LOG_FILE")" -gt 5242880 ]; then
         mv -f "$LOG_FILE" "$LOG_FILE.1"
     fi
 
-    # Worker único y sin log de acceso: RAM mínima y discos en reposo
+    # Single worker and no access log: minimal RAM and idle disks
     nohup "$PYTHON_BIN" -m uvicorn app.main:app --host 0.0.0.0 --port "$PORT" \
         --workers 1 --no-access-log >> "$LOG_FILE" 2>&1 &
     echo $! > "$PID_FILE"

@@ -4,7 +4,7 @@ from pathlib import Path
 import yaml
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent  # package/
-CONFIG_PATH = BASE_DIR / "config" / "config.yaml"  # override local, no se empaqueta
+CONFIG_PATH = BASE_DIR / "config" / "config.yaml"  # local override, not packaged
 DEFAULT_CONFIG_PATH = BASE_DIR / "config" / "config.default.yaml"
 
 
@@ -23,7 +23,7 @@ def load_config() -> dict:
         else:
             config[key] = value
 
-    # APP_DATA_DIR permite aislar los datos (tests, instalaciones alternativas)
+    # APP_DATA_DIR isolates the data (tests, alternative installs)
     data_dir = Path(os.getenv("APP_DATA_DIR") or (BASE_DIR / "data")).resolve()
     data_dir.mkdir(parents=True, exist_ok=True)
     config["data_dir"] = str(data_dir)
