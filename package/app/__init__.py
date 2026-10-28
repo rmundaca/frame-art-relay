@@ -1,2 +1,2 @@
-"""Frame Art"""
-__version__ = "1.2.5"
+"""Frame Art Relay"""
+__version__ = "1.2.6"

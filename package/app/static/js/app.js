@@ -5,7 +5,7 @@
 const I18N = {
     es: {
         locale: 'es-ES',
-        appName: 'Frame Art',
+        appName: 'Frame Art Relay',
         tabAlbums: 'Álbumes', tabTvs: 'Televisores', tabSchedule: 'Horario',
         settings: 'Ajustes', close: 'Cerrar', cancel: 'Cancelar', save: 'Guardar', delete: 'Eliminar',
         edit: 'Editar', back: 'Volver', saved: 'Cambios guardados', deleted: 'Eliminado',
@@ -146,7 +146,7 @@ const I18N = {
     },
     en: {
         locale: 'en-GB',
-        appName: 'Frame Art',
+        appName: 'Frame Art Relay',
         tabAlbums: 'Albums', tabTvs: 'TVs', tabSchedule: 'Schedule',
         settings: 'Settings', close: 'Close', cancel: 'Cancel', save: 'Save', delete: 'Delete',
         edit: 'Edit', back: 'Back', saved: 'Changes saved', deleted: 'Deleted',

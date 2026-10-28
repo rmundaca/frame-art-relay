@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 Base.metadata.create_all(bind=engine)
 init_db_migrations(engine)
 
-app = FastAPI(title="Frame Art", version=__version__)
+app = FastAPI(title="Frame Art Relay", version=__version__)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 for module in (albums, tvs, schedule, settings_api):

@@ -1,12 +1,12 @@
 {
   "general": {
     "package": "frame-art",
-    "name": "Frame Art",
-    "version": "1.2.5",
+    "name": "Frame Art Relay",
+    "version": "1.2.6",
     "developer": "Rodrigo Mundaca",
     "maintainer": "Rodrigo Mundaca",
     "email": "4768231+rmundaca@users.noreply.github.com",
-    "website": "https://github.com/rmundaca",
+    "website": "https://github.com/rmundaca/frame-art-relay",
     "architecture": "any",
     "firmware": "3.0.0",
     "category": "utilities",
@@ -25,12 +25,12 @@
     }
   },
   "package": "frame-art",
-  "name": "Frame Art",
-  "version": "1.2.5",
+  "name": "Frame Art Relay",
+  "version": "1.2.6",
   "developer": "Rodrigo Mundaca",
   "maintainer": "Rodrigo Mundaca",
   "email": "4768231+rmundaca@users.noreply.github.com",
-  "website": "https://github.com/rmundaca",
+  "website": "https://github.com/rmundaca/frame-art-relay",
   "architecture": "any",
   "firmware": "3.0.0"
 }

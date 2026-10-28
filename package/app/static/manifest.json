@@ -1,6 +1,6 @@
 {
-  "name": "Frame Art",
-  "short_name": "FrameArt",
+  "name": "Frame Art Relay",
+  "short_name": "Art Relay",
   "description": "NAS photo albums for Samsung The Frame",
   "start_url": "/",
   "scope": "/",

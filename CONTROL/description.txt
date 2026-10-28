@@ -1,5 +1,5 @@
 [en]
-Frame Art is a lightweight self-hosted web app for Asustor NAS. It sends themed photo albums from NAS folders or iCloud shared albums to Samsung The Frame TVs, with native slideshow and time-slot scheduling.
+Frame Art Relay is a lightweight self-hosted web app for Asustor NAS. It sends themed photo albums from NAS folders or iCloud shared albums to Samsung The Frame TVs, with native slideshow and time-slot scheduling.
 
 [es]
-Frame Art es una aplicación web ligera y autohospedada para NAS Asustor. Envía álbumes temáticos de carpetas del NAS o álbumes compartidos de iCloud a televisores Samsung The Frame, con slideshow nativo y franjas horarias.
+Frame Art Relay es una aplicación web ligera y autohospedada para NAS Asustor. Envía álbumes temáticos de carpetas del NAS o álbumes compartidos de iCloud a televisores Samsung The Frame, con slideshow nativo y franjas horarias.

@@ -22,7 +22,7 @@ class HealthApiTest(unittest.TestCase):
     def test_index(self):
         res = self.client.get("/")
         self.assertEqual(res.status_code, 200)
-        self.assertIn("Frame Art", res.text)
+        self.assertIn("Frame Art Relay", res.text)
 
 
 class AlbumsApiTest(MediaRootMixin, unittest.TestCase):

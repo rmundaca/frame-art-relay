@@ -112,7 +112,7 @@ h3 { font-size: .9rem; margin: 18px 0 8px; }
 }
 .brand { justify-self: start; display: flex; align-items: center; gap: 10px; min-width: 0; }
 .brand img { border-radius: 7px; flex: none; }
-.brand-name { font-weight: 700; letter-spacing: -.01em; white-space: nowrap; }
+.brand-name { font-weight: 700; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .small-title {
   font-weight: 600; opacity: 0; transform: translateY(4px);
   transition: opacity .18s ease, transform .18s ease;
