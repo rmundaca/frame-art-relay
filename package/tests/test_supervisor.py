@@ -82,10 +82,17 @@ class SupervisorTest(MediaRootMixin, unittest.TestCase):
         self.tick()
         self.assertEqual(len(self.client.photos), 4)
         self.assertEqual(set(self.client.photos.values()) - {"ajena"}, {"modern_black"})
-        self.assertEqual(self.client.rotations, [(30, False)])
+        # The native slideshow would mix every album in "My Photos": the app rotates
+        self.assertEqual(self.client.rotations, [(0, False)])
         self.assertEqual(self.tv.last_state, "art")
         self.tick()
-        self.assertEqual(self.client.rotations, [(30, False)])
+        self.assertEqual(self.client.rotations, [(0, False)])
+
+    def test_uploads_record_album_and_size(self):
+        self.tick()
+        rows = self.db.query(TvContent).filter(TvContent.tv_id == self.tv.id).all()
+        self.assertEqual({r.album_id for r in rows}, {self.album.id})
+        self.assertTrue(all(r.size and r.size > 0 for r in rows))
 
     def test_excluded_image_is_removed_but_foreign_photo_kept(self):
         self.tick()
@@ -113,7 +120,7 @@ class SupervisorTest(MediaRootMixin, unittest.TestCase):
         self.tick()
         self.tick(MONDAY_NIGHT)
         self.tick(MONDAY_NIGHT)
-        self.assertEqual(self.client.rotations, [(30, False), (0, False)])
+        self.assertEqual(self.client.rotations, [(0, False), (0, False)])
 
     def test_offline_in_slot_sends_wol(self):
         self.client.state_value = "offline"
@@ -126,6 +133,71 @@ class SupervisorTest(MediaRootMixin, unittest.TestCase):
         self.client.fail_upload = True
         self.tick()
         self.assertEqual(self.tv.last_error, "tv_unavailable")
+
+
+class AlbumSwitchTest(MediaRootMixin, unittest.TestCase):
+    """Albums stay on the TV when the slot changes and are only deleted with the album."""
+
+    def setUp(self):
+        super().setUp()
+        for name in ("a.jpg", "b.jpg"):
+            make_image(self.root / "one" / name)
+        make_image(self.root / "two" / "c.jpg")
+        self.db = SessionLocal()
+        self.one, self.two = Album(name="One", interval=30), Album(name="Two", interval=30)
+        self.tv = Tv(name="Frame", host="192.0.2.12", paired=True)
+        self.db.add_all([self.one, self.two, self.tv])
+        self.db.commit()
+        for album, folder in ((self.one, "one"), (self.two, "two")):
+            source = AlbumSource(album_id=album.id, path=str(self.root / folder))
+            self.db.add(source)
+            self.db.commit()
+            rescan_source(self.db, source)
+        self.slot = ScheduleSlot(tv_id=self.tv.id, album_id=self.one.id, days=1, start="08:00", end="23:00")
+        self.db.add(self.slot)
+        self.db.commit()
+        self.client = FakeClient()
+
+    def tearDown(self):
+        for obj in (self.tv, self.one, self.two):
+            if self.db.get(type(obj), obj.id):
+                self.db.delete(obj)
+        self.db.commit()
+        self.db.close()
+        super().tearDown()
+
+    def tick(self, now=MONDAY_NOON):
+        supervisor.tick(self.db, self.tv, now=now, client_factory=lambda tv: self.client)
+
+    def switch(self, album):
+        self.slot.album_id = album.id
+        self.db.commit()
+        self.tick()
+
+    def test_switching_keeps_previous_album_and_does_not_upload_it_again(self):
+        self.tick()
+        first = set(self.client.photos)
+        self.switch(self.two)
+        self.assertTrue(first <= set(self.client.photos))
+        self.assertEqual(len(self.client.photos), 4)
+        uploads = self.client._next
+        self.switch(self.one)
+        self.assertEqual(self.client._next, uploads)
+
+    def test_deleting_the_album_deletes_its_photos_from_the_tv(self):
+        self.tick()
+        self.switch(self.two)
+        self.db.delete(self.one)
+        self.db.commit()
+        self.client.state_value = "offline"
+        self.tick(MONDAY_NIGHT)
+        self.assertEqual(len(self.client.photos), 4)  # pending until the TV is reachable
+        self.client.state_value = "art"
+        self.tick(MONDAY_NIGHT)  # also outside the slots
+        self.assertEqual(len(self.client.photos), 2)
+        self.assertIn("MY_F9999", self.client.photos)
+        rows = self.db.query(TvContent).filter(TvContent.tv_id == self.tv.id).all()
+        self.assertEqual({r.album_id for r in rows}, {self.two.id})
 
 
 if __name__ == "__main__":

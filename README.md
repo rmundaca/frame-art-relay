@@ -17,10 +17,11 @@
 | :--- | :--- |
 | **Albums** | Photos from local or network folders, or public iCloud shared albums (no Apple login). |
 | **Schedule** | Weekly time slots per TV that choose which album is shown. |
-| **Rotation** | The TV's native slideshow (10 min to 3 days), or app-driven changes every 1 to 5 min. |
+| **Rotation** | The app changes the image (1 min to 3 days) among the active album's photos, only while the screen is on. |
 | **Layouts** | Two or three photos combined into one 4K image. |
 | **Display** | Crop to fill, or whole photos over a paper or blurred background. TV mattes and optional date stamp. |
 | **Smart crop** | Optional. Google Gemini finds people and animals so crops keep them. |
+| **TV storage** | Albums stay on the TV when the slot changes and are only deleted with the album. MB per album and TV, with a warning above a limit. |
 | **TV gallery** | Browse and delete what is stored on the TV. |
 
 Works on phone and desktop, in English and Spanish, with light and dark themes. Every option is explained
@@ -94,6 +95,7 @@ media:
     - '\\192.168.1.20\Photos\Frame'
 frame:
   max_images_per_album: 100
+  storage_warn_mb: 1024           # warn when the app has uploaded more than this to a TV
 icloud:
   max_photos: 300                 # photos downloaded per shared album
 ```

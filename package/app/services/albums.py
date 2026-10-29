@@ -17,6 +17,11 @@ def thumb_path(image_id: int) -> Path:
     return Path(settings["data_dir"]) / "thumbs" / f"{image_id}.jpg"
 
 
+def asset_version(created_at, mtime=None) -> str:
+    """URL version for cached thumbnails: SQLite reuses the ids of deleted rows, and files change."""
+    return f"{int(created_at.timestamp() * 1000) if created_at else 0:x}-{int(mtime or 0):x}"
+
+
 def album_images(db: Session, album: Album) -> list:
     """Included images that may go to the TV, capped per album, ordered by key."""
     limit = int(settings.get("frame", {}).get("max_images_per_album", 100))

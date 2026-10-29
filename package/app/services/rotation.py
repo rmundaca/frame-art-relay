@@ -1,9 +1,10 @@
-"""App-driven rotation for intervals shorter than the TV minimum.
+"""App-driven rotation for every interval.
 
-The native slideshow does not go below 10 minutes. For 1-5 minutes the supervisor turns it off and this task shows
-the next image with select_image. Changing the image, and even connecting to the art channel, turns the screen on
-even if the motion sensor turned it off. So rotation only happens with the TV in the "art" state: state() queries
-REST first, which does not answer with the screen off, and in that case does not touch the art channel.
+The native slideshow rotates all of "My Photos", which keeps the photos of every album, so the supervisor turns it
+off and this task shows the next image with select_image. Changing the image, and even connecting to the art
+channel, turns the screen on even if the motion sensor turned it off. So rotation only happens with the TV in the
+"art" state: state() queries REST first, which does not answer with the screen off, and in that case does not touch
+the art channel.
 
 The order lives in memory per TV: a restart starts a new deck.
 """
@@ -18,16 +19,12 @@ from sqlalchemy.orm import Session
 from app.models.schemas import Album, ScheduleSlot, TvContent
 from app.services.composition import effective_output, row_key
 from app.services.schedule import active_slot
-from app.services.tv_client import NATIVE_MIN, TvError, client_for
+from app.services.tv_client import TvError, client_for
 
 logger = logging.getLogger("rotation")
 
 # Maximum wait for the art channel: if the supervisor is uploading photos, try again next round
 BUSY_WAIT = 2
-
-
-def app_driven(album: Album) -> bool:
-    return album.interval < NATIVE_MIN
 
 
 @dataclass
@@ -72,14 +69,13 @@ def tick(db: Session, tv, now: datetime = None, client_factory=client_for, rng=r
     slot = active_slot(slots, now)
     album = db.get(Album, slot.album_id) if slot else None
     with _guard:
-        if not album or not app_driven(album):
+        if not album:
             _decks.pop(tv.id, None)
             return False
         deck = _decks.get(tv.id)
         if not deck or deck.album_id != album.id or deck.shuffle != album.shuffle:
-            # New album in the slot: the first change comes after a full interval
-            _decks[tv.id] = Deck(album.id, album.shuffle, now)
-            return False
+            # New album in the slot: its first image is shown as soon as it is on the TV
+            deck = _decks[tv.id] = Deck(album.id, album.shuffle, now - timedelta(minutes=album.interval))
     if now - deck.last_change < timedelta(minutes=album.interval):
         return False
     client = client_factory(tv)
@@ -88,10 +84,12 @@ def tick(db: Session, tv, now: datetime = None, client_factory=client_for, rng=r
             if client.state() != "art":
                 return False  # screen turned off by the sensor, in use or off: retry next round
             items = playlist(db, tv.id, album)
-            if len(items) < 2:
+            if not items:
+                return False  # nothing uploaded yet: retry next round
+            content_id = next_content(deck, items, rng)
+            if content_id == deck.current:
                 deck.last_change = now
                 return False
-            content_id = next_content(deck, items, rng)
             client.select(content_id)
     except TvError as exc:
         if exc.code != "tv_busy":

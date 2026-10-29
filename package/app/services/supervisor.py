@@ -6,19 +6,14 @@ from sqlalchemy.orm import Session
 
 from app.models.schemas import Album, ScheduleSlot, Tv
 from app.services.schedule import active_slot
-from app.services.sync import sync_tv
-from app.services.tv_client import NATIVE_MIN, TvError, client_for
+from app.services.sync import purge_orphans, sync_tv
+from app.services.tv_client import TvError, client_for
 
 logger = logging.getLogger("supervisor")
 
 
 def rotation_signature(album: Album) -> str:
     return f"{album.id}:{album.interval}:{int(album.shuffle)}"
-
-
-def native_minutes(album: Album) -> int:
-    """Native slideshow interval; 0 (off) when the app does the rotation."""
-    return album.interval if album.interval >= NATIVE_MIN else 0
 
 
 def tick(db: Session, tv: Tv, now: datetime = None, client_factory=client_for) -> None:
@@ -33,6 +28,11 @@ def tick(db: Session, tv: Tv, now: datetime = None, client_factory=client_for) -
                 # When it comes back on, the rotation is re-applied
                 tv.applied = None
 
+            if state == "art":
+                purged = purge_orphans(db, tv.id, client)
+                if purged:
+                    logger.info("TV %s: -%d de álbumes eliminados", tv.name, purged)
+
             slots = db.query(ScheduleSlot).filter(ScheduleSlot.tv_id == tv.id).all()
             slot = active_slot(slots, now or datetime.now())
             if slot:
@@ -42,8 +42,9 @@ def tick(db: Session, tv: Tv, now: datetime = None, client_factory=client_for) -
                     album = db.get(Album, slot.album_id)
                     result = sync_tv(db, tv, album, client)
                     sig = rotation_signature(album)
-                    if result.on_tv and (result.changed or tv.applied != sig):
-                        client.set_rotation(native_minutes(album), album.shuffle)
+                    if result.on_tv and tv.applied != sig:
+                        # The TV slideshow would mix every album in "My Photos": the app rotates (rotation.py)
+                        client.set_rotation(0, False)
                         tv.applied = sig
                     if result.changed:
                         logger.info("TV %s: +%d -%d (pendientes %d)", tv.name, result.uploaded,

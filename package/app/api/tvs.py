@@ -8,13 +8,14 @@ import requests
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import get_db
 from app.models.schemas import Album, CompositionMember, CompositionPage, Image, ScheduleSlot, Tv, TvContent
 from app.schedulers.tasks import compose_album, run_now, supervise_tv
-from app.services.albums import thumb_path
+from app.services.albums import asset_version, thumb_path
 from app.services.composition import page_thumb
 from app.services.image_proc import make_thumbnail
 from app.services.schedule import active_slot
@@ -24,6 +25,8 @@ router = APIRouter(prefix="/api/tvs", tags=["tvs"])
 
 _HOST = re.compile(r"^[A-Za-z0-9.\-]{1,253}$")
 _CONTENT_ID = re.compile(r"^[A-Za-z0-9_\-]{1,64}$")
+# The TV reuses content ids, so the browser must revalidate (ETag) each thumbnail
+REVALIDATE = {"Cache-Control": "no-cache"}
 
 
 class TvIn(BaseModel):
@@ -53,6 +56,8 @@ def tv_view(tv: Tv, db: Session) -> dict:
         "paired": tv.paired, "enabled": tv.enabled, "state": tv.last_state, "last_seen": _iso(tv.last_seen),
         "last_error": tv.last_error,
         "uploaded": db.query(TvContent).filter(TvContent.tv_id == tv.id).count(),
+        "uploaded_bytes": int(db.query(func.coalesce(func.sum(TvContent.size), 0))
+                              .filter(TvContent.tv_id == tv.id).scalar()),
         "active_album": {"id": album.id, "name": album.name} if album else None,
     }
 
@@ -181,9 +186,9 @@ def gallery(tv_id: int, db: Session = Depends(get_db)):
     names, pages = {}, {}
     image_ids = [r.image_id for r in managed.values() if r.image_id]
     if image_ids:
-        rows = (db.query(Image.id, Image.key, Album.name).join(Album, Album.id == Image.album_id)
+        rows = (db.query(Image, Album.name).join(Album, Album.id == Image.album_id)
                 .filter(Image.id.in_(image_ids)))
-        names = {img_id: (key, album) for img_id, key, album in rows}
+        names = {img.id: (img.key, album, asset_version(img.created_at, img.mtime)) for img, album in rows}
     page_ids = [r.page_id for r in managed.values() if r.page_id]
     if page_ids:
         rows = (db.query(CompositionPage.id, Album.name).join(Album, Album.id == CompositionPage.album_id)
@@ -193,15 +198,22 @@ def gallery(tv_id: int, db: Session = Depends(get_db)):
     for p in photos:
         cid = p["content_id"]
         row = managed.get(cid)
-        item = {"content_id": cid, "managed": row is not None, "image_id": None, "page_id": None,
+        item = {"content_id": cid, "managed": row is not None, "image_id": None, "image_v": None, "page_id": None,
                 "page_revision": None, "members": 0, "name": None, "album": None, "date": p.get("image_date")}
         if row and row.page_id:
             item.update(page_id=row.page_id, page_revision=row.page_revision, album=pages.get(row.page_id),
                         members=db.query(CompositionMember).filter(CompositionMember.page_id == row.page_id).count())
         elif row:
-            key, album = names.get(row.image_id, (None, None))
-            item.update(image_id=row.image_id, name=key, album=album)
+            key, album, version = names.get(row.image_id, (None, None, None))
+            item.update(image_id=row.image_id if version else None, image_v=version, name=key, album=album)
         items.append(item)
+    # The TV reuses content ids: drop cached thumbnails of photos that are gone
+    alive = {f"{p['content_id']}.jpg" for p in photos}
+    cache = _tv_thumb_path(tv.id, "x").parent
+    if cache.is_dir():
+        for path in cache.iterdir():
+            if path.name not in alive:
+                path.unlink(missing_ok=True)
     return items
 
 
@@ -216,11 +228,12 @@ def gallery_thumb(tv_id: int, content_id: str, db: Session = Depends(get_db)):
     tv = _get(db, tv_id)
     row = db.query(TvContent).filter(TvContent.tv_id == tv.id, TvContent.content_id == content_id).first()
     if row and row.image_id and thumb_path(row.image_id).exists():
-        return FileResponse(thumb_path(row.image_id), media_type="image/jpeg")
+        return FileResponse(thumb_path(row.image_id), media_type="image/jpeg", headers=REVALIDATE)
     if row and row.page_id:
         page = db.get(CompositionPage, row.page_id)
         if page and page_thumb(page.album_id, page.id, row.page_revision).exists():
-            return FileResponse(page_thumb(page.album_id, page.id, row.page_revision), media_type="image/jpeg")
+            return FileResponse(page_thumb(page.album_id, page.id, row.page_revision), media_type="image/jpeg",
+                                headers=REVALIDATE)
     path = _tv_thumb_path(tv.id, content_id)
     if not path.exists():
         try:
@@ -230,7 +243,7 @@ def gallery_thumb(tv_id: int, content_id: str, db: Session = Depends(get_db)):
             raise _tv_error(exc)
         except OSError:
             raise HTTPException(409, "thumbnail_failed")
-    return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "max-age=86400"})
+    return FileResponse(path, media_type="image/jpeg", headers=REVALIDATE)
 
 
 @router.post("/{tv_id}/gallery/delete")

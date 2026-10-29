@@ -9,13 +9,17 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.models.schemas import Album, AlbumSource, CompositionPage, Image
-from app.schedulers.tasks import compose_album, refresh_source, run_now
+from app.models.schemas import Album, AlbumSource, CompositionPage, Image, TvContent
+from app.schedulers.tasks import compose_album, refresh_source, run_now, supervise_tv
 from app.services import composition, source_icloud, source_local, subject_ai
-from app.services.albums import image_thumbnail, rescan_source, thumb_path
+from app.services.albums import asset_version, image_thumbnail, rescan_source, thumb_path
 from app.services.tv_client import INTERVALS, MATTES
 
 router = APIRouter(prefix="/api", tags=["albums"])
+
+# Versioned URLs (?v=) never change; without a version the browser revalidates every time
+IMMUTABLE = {"Cache-Control": "max-age=31536000, immutable"}
+REVALIDATE = {"Cache-Control": "no-cache"}
 
 
 class AlbumIn(BaseModel):
@@ -61,6 +65,15 @@ def source_view(s: AlbumSource) -> dict:
             "last_scan": _iso(s.last_scan), "last_error": s.last_error}
 
 
+def tv_bytes(db: Session, album_id: int) -> int:
+    """Bytes of the album uploaded to the TVs; the same image on several TVs counts once."""
+    sizes = {}
+    for row in db.query(TvContent).filter(TvContent.album_id == album_id):
+        key = composition.row_key(row)
+        sizes[key] = max(sizes.get(key, 0), row.size or 0)
+    return sum(sizes.values())
+
+
 def album_view(album: Album, db: Session) -> dict:
     included_expr = func.coalesce(func.sum(case((Image.excluded.is_(False), 1), else_=0)), 0)
     total, included = db.query(func.count(Image.id), included_expr).filter(Image.album_id == album.id).one()
@@ -74,12 +87,14 @@ def album_view(album: Album, db: Session) -> dict:
         # Original photos that go to the TV (capped) and final images after grouping
         "output": {"photos": output.photos, "total": output.total, "pending": output.pending,
                    "errors": output.errors, "error": output.error, "current": output.current},
+        "tv_bytes": tv_bytes(db, album.id),
         "sources": [source_view(s) for s in album.sources],
     }
 
 
 def image_view(img: Image) -> dict:
-    return {"id": img.id, "key": img.key, "excluded": img.excluded, "source_id": img.source_id}
+    return {"id": img.id, "key": img.key, "excluded": img.excluded, "source_id": img.source_id,
+            "v": asset_version(img.created_at, img.mtime)}
 
 
 def _get_album(db: Session, album_id: int) -> Album:
@@ -93,10 +108,11 @@ def page_view(page: CompositionPage, db: Session) -> dict:
     members = []
     for m in page.members:
         img = db.get(Image, m.image_id)
-        members.append({"id": img.id, "key": img.key, "excluded": img.excluded})
+        members.append({"id": img.id, "key": img.key, "excluded": img.excluded,
+                        "v": asset_version(img.created_at, img.mtime)})
     return {"id": page.id, "template": page.template, "revision": page.revision, "status": page.status,
             "last_error": page.last_error, "rendered_revision": page.rendered_revision,
-            "members": members}
+            "v": asset_version(page.created_at), "members": members}
 
 
 def _apply(album: Album, name=None, matte=None, shuffle=None, interval=None, composition_mode=None,
@@ -140,8 +156,10 @@ def _apply(album: Album, name=None, matte=None, shuffle=None, interval=None, com
 
 @router.get("/meta")
 def meta():
+    frame = settings.get("frame", {})
     return {"mattes": MATTES, "intervals": INTERVALS, "roots": source_local.roots(), "ai": subject_ai.configured(),
-            "max_images": int(settings.get("frame", {}).get("max_images_per_album", 100))}
+            "max_images": int(frame.get("max_images_per_album", 100)),
+            "storage_warn_mb": int(frame.get("storage_warn_mb", 1024))}
 
 
 @router.get("/browse")
@@ -194,8 +212,12 @@ def delete_album(album_id: int, db: Session = Depends(get_db)):
         if source.kind == "icloud":
             source_icloud.remove_cache(source.id)
     composition.remove_cache(album.id)
+    tv_ids = {t for (t,) in db.query(TvContent.tv_id).filter(TvContent.album_id == album.id).distinct()}
     db.delete(album)
     db.commit()
+    # Its photos are deleted from each TV by the supervisor, as soon as the TV is in art mode
+    for tv_id in tv_ids:
+        run_now(supervise_tv, tv_id)
     return {"ok": True}
 
 
@@ -286,7 +308,7 @@ def update_image(image_id: int, req: ImagePatch, db: Session = Depends(get_db)):
 
 
 @router.get("/images/{image_id}/thumb")
-def image_thumb(image_id: int, db: Session = Depends(get_db)):
+def image_thumb(image_id: int, v: Optional[str] = None, db: Session = Depends(get_db)):
     img = db.get(Image, image_id)
     if not img:
         raise HTTPException(404, "not_found")
@@ -294,7 +316,8 @@ def image_thumb(image_id: int, db: Session = Depends(get_db)):
         path = image_thumbnail(db, img)
     except (ValueError, OSError):
         raise HTTPException(404, "not_found")
-    return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "max-age=86400"})
+    current = v == asset_version(img.created_at, img.mtime)
+    return FileResponse(path, media_type="image/jpeg", headers=IMMUTABLE if current else REVALIDATE)
 
 
 @router.get("/albums/{album_id}/pages")
@@ -317,7 +340,7 @@ def compose(album_id: int, db: Session = Depends(get_db)):
     return album_view(album, db)
 
 
-def _page_asset(db: Session, page_id: int, rev: Optional[int], thumb: bool):
+def _page_asset(db: Session, page_id: int, rev: Optional[int], v: Optional[str], thumb: bool):
     page = db.get(CompositionPage, page_id)
     if not page:
         raise HTTPException(404, "not_found")
@@ -327,16 +350,17 @@ def _page_asset(db: Session, page_id: int, rev: Optional[int], thumb: bool):
     path = (composition.page_thumb if thumb else composition.page_file)(page.album_id, page.id, revision)
     if not path.exists():
         raise HTTPException(404, "not_found")
-    # Each revision has its own file and never changes
-    return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "max-age=604800"})
+    # Each revision has its own file; the version tells a reused page id apart
+    current = rev and v == asset_version(page.created_at)
+    return FileResponse(path, media_type="image/jpeg", headers=IMMUTABLE if current else REVALIDATE)
 
 
 @router.get("/pages/{page_id}/thumb")
-def page_thumb(page_id: int, rev: Optional[int] = None, db: Session = Depends(get_db)):
-    return _page_asset(db, page_id, rev, thumb=True)
+def page_thumb(page_id: int, rev: Optional[int] = None, v: Optional[str] = None, db: Session = Depends(get_db)):
+    return _page_asset(db, page_id, rev, v, thumb=True)
 
 
 @router.get("/pages/{page_id}/image")
-def page_image(page_id: int, rev: Optional[int] = None, db: Session = Depends(get_db)):
+def page_image(page_id: int, rev: Optional[int] = None, v: Optional[str] = None, db: Session = Depends(get_db)):
     """Generated JPEG exactly as it is uploaded to the TV."""
-    return _page_asset(db, page_id, rev, thumb=False)
+    return _page_asset(db, page_id, rev, v, thumb=False)

@@ -471,7 +471,7 @@ class CompositionSyncTest(CompositionDbMixin, unittest.TestCase):
         self.db.add(ScheduleSlot(tv_id=self.tv.id, album_id=self.album.id, days=1, start="08:00", end="23:00"))
         self.db.commit()
         supervisor.tick(self.db, self.tv, now=MONDAY_NOON, client_factory=lambda tv: self.client)
-        self.assertEqual(self.client.rotations, [(30, False)])
+        self.assertEqual(self.client.rotations, [(0, False)])
         self.assertEqual(len(self.client.photos), 3)
 
     def test_gallery_delete_of_page_excludes_members(self):

@@ -18,7 +18,7 @@ const I18N = {
         sources: 'Carpetas', addFolder: 'Añadir carpeta', subfolders: 'con subcarpetas',
         images: 'Imágenes', rescan: 'Reescanear', rescanned: 'Carpetas reescaneadas',
         noImages: 'No hay imágenes en las carpetas del álbum.',
-        deleteAlbum: 'Eliminar álbum', deleteAlbumMsg: 'Se quitará de todas las franjas. Las fotos del NAS no se tocan.',
+        deleteAlbum: 'Eliminar álbum', deleteAlbumMsg: 'Se quitará de todas las franjas y sus fotos se borrarán de los televisores. Las fotos del NAS no se tocan.',
         deleteSource: 'Quitar carpeta', deleteSourceMsg: 'Sus imágenes dejarán de formar parte del álbum.',
         chooseFolder: 'Elegir carpeta', useFolder: 'Usar esta carpeta', folderImages: '{n} imágenes en esta carpeta',
         includeSubfolders: 'Incluir subcarpetas', up: 'Subir un nivel', roots: 'Carpetas permitidas',
@@ -37,12 +37,13 @@ const I18N = {
         subjectDetection: 'Recorte inteligente',
         subjectNeedsKey: 'El recorte inteligente necesita una clave de Gemini en Ajustes.',
         outputMeta: '{photos} fotos · {total} imágenes para el TV',
+        megabytes: '{n} MB', onTv: '{size} en el TV',
         compositions: 'Composiciones', regenerate: 'Regenerar', regenerating: 'Generando composiciones...',
         composeWaiting: 'Agrupando las fotos...', composePending: 'Preparando {n} composiciones...',
         noCompositions: 'Ninguna foto tiene una combinación adecuada: todas se muestran por separado.',
         originals: 'Fotos originales',
         albumHelp: [
-            ['Cambiar cada', 'Cada cuánto cambia la imagen. Desde 10 minutos usa el pase de diapositivas del TV. Con 1 a 5 minutos la cambia la app, solo con la pantalla encendida.'],
+            ['Cambiar cada', 'Cada cuánto cambia la imagen. La cambia la app entre las fotos de este álbum, solo con la pantalla encendida.'],
             ['Orden', 'Aleatorio baraja las imágenes; Secuencial las muestra por nombre de archivo.'],
             ['Fotos sueltas', 'Llenar pantalla recorta cada foto a 16:9. Completas muestra enteras las verticales y panorámicas sobre el fondo; las horizontales que casi llenan la pantalla se siguen recortando.'],
             ['Composiciones', 'Agrupa dos o tres fotos en una sola imagen, como una hoja de álbum. Esas fotos ya no se muestran por separado. Al borrar una composición en la galería del TV, sus fotos se excluyen del álbum.'],
@@ -51,6 +52,7 @@ const I18N = {
             ['Fondo', 'Rellena el espacio libre de las composiciones y de las fotos completas. Desenfocado usa la propia foto.'],
             ['Marco', 'Paspartú que dibuja el TV alrededor de la imagen.'],
             ['Imágenes', 'Toca una imagen para excluirla o incluirla (máximo {max} por álbum). Las composiciones se rehacen solas; toca una para ver sus fotos.'],
+            ['Espacio en el TV', 'MB que ocupa el álbum en los televisores. Sus fotos se quedan en el TV al cambiar de franja, para no volver a subirlas, y solo se borran al eliminar el álbum.'],
         ],
         page: 'Composición', pageMembers: 'Fotos de esta composición', openFull: 'Ver a tamaño real',
         pageStatus: { pending: 'Preparando', updating: 'Actualizando', error: 'Error' },
@@ -74,9 +76,11 @@ const I18N = {
         pair: 'Emparejar', pairing: 'Esperando al TV...', paired: 'Emparejado',
         refresh: 'Actualizar estado', syncNow: 'Sincronizar ahora', syncQueued: 'Sincronización en marcha',
         gallery: 'Galería del TV', uploaded: 'Subidas por la app', lastError: 'Último error',
+        storageUsed: 'Espacio usado',
+        storageWarn: 'La app ha subido {used} a {name}, más de {limit}. Elimina los álbumes que no uses para liberar espacio en el TV.',
         enabled: 'Activo', pause: 'Pausar', resume: 'Reanudar',
         deleteTv: 'Eliminar televisor', deleteTvMsg: 'Se borran sus franjas. Las fotos del TV se quedan.',
-        galleryHelp: 'La rotación usa todas las fotos de "Mis fotos", también las que no subió la app. Las que borres y vengan de un álbum quedan excluidas de él.',
+        galleryHelp: 'La rotación solo usa las fotos del álbum activo. Las de otros álbumes se quedan en el TV hasta que eliminas el álbum. Las que borres aquí y vengan de un álbum quedan excluidas de él.',
         galleryEmpty: 'No hay fotos en "Mis fotos".', fromApp: 'App',
         deleteSelected: 'Borrar seleccionadas ({n})', deletePhotos: 'Borrar fotos del TV',
         deletePhotosMsg: 'Se borrarán {n} fotos del televisor.', photosDeleted: '{n} fotos borradas',
@@ -158,7 +162,7 @@ const I18N = {
         sources: 'Folders', addFolder: 'Add folder', subfolders: 'with subfolders',
         images: 'Images', rescan: 'Rescan', rescanned: 'Folders rescanned',
         noImages: 'There are no images in the album folders.',
-        deleteAlbum: 'Delete album', deleteAlbumMsg: 'It will be removed from every time slot. NAS photos are not touched.',
+        deleteAlbum: 'Delete album', deleteAlbumMsg: 'It will be removed from every time slot and its photos will be deleted from the TVs. NAS photos are not touched.',
         deleteSource: 'Remove folder', deleteSourceMsg: 'Its images will no longer be part of the album.',
         chooseFolder: 'Choose folder', useFolder: 'Use this folder', folderImages: '{n} images in this folder',
         includeSubfolders: 'Include subfolders', up: 'Up one level', roots: 'Allowed folders',
@@ -177,12 +181,13 @@ const I18N = {
         subjectDetection: 'Smart crop',
         subjectNeedsKey: 'Smart crop needs a Gemini key in Settings.',
         outputMeta: '{photos} photos · {total} images for the TV',
+        megabytes: '{n} MB', onTv: '{size} on the TV',
         compositions: 'Layouts', regenerate: 'Regenerate', regenerating: 'Generating layouts...',
         composeWaiting: 'Grouping photos...', composePending: 'Preparing {n} layouts...',
         noCompositions: 'No photos have a suitable combination: all of them are shown on their own.',
         originals: 'Original photos',
         albumHelp: [
-            ['Change every', 'How often the image changes. From 10 minutes up the TV runs its own slideshow. With 1 to 5 minutes the app changes it, only while the screen is on.'],
+            ['Change every', 'How often the image changes. The app changes it among this album\'s photos, only while the screen is on.'],
             ['Order', 'Shuffle mixes the images; In order shows them by file name.'],
             ['Single photos', 'Fill screen crops each photo to 16:9. Whole shows portrait and panoramic photos uncropped over the background; landscape photos that almost fill the screen are still cropped.'],
             ['Layouts', 'Combines two or three photos into one image, like an album page. Those photos are no longer shown on their own. Deleting a layout from the TV gallery excludes its photos from the album.'],
@@ -191,6 +196,7 @@ const I18N = {
             ['Background', 'Fills the free space in layouts and in photos shown whole. Blurred uses the photo itself.'],
             ['Matte', 'Mat border the TV draws around the image.'],
             ['Images', 'Tap an image to exclude or include it (up to {max} per album). Layouts are rebuilt automatically; tap one to see its photos.'],
+            ['Space on the TV', 'MB the album takes up on the TVs. Its photos stay on the TV when the slot changes, so they are not uploaded again, and are only deleted when the album is deleted.'],
         ],
         page: 'Layout', pageMembers: 'Photos in this layout', openFull: 'View full size',
         pageStatus: { pending: 'Preparing', updating: 'Updating', error: 'Error' },
@@ -213,9 +219,11 @@ const I18N = {
         pair: 'Pair', pairing: 'Waiting for the TV...', paired: 'Paired',
         refresh: 'Refresh status', syncNow: 'Sync now', syncQueued: 'Sync started',
         gallery: 'TV gallery', uploaded: 'Uploaded by the app', lastError: 'Last error',
+        storageUsed: 'Space used',
+        storageWarn: 'The app has uploaded {used} to {name}, more than {limit}. Delete the albums you do not use to free space on the TV.',
         enabled: 'Active', pause: 'Pause', resume: 'Resume',
         deleteTv: 'Delete TV', deleteTvMsg: 'Its time slots are deleted. Photos on the TV stay.',
-        galleryHelp: 'Rotation uses every photo in "My Photos", including those not uploaded by the app. Deleting album photos here also excludes them from the album.',
+        galleryHelp: 'Rotation only uses the photos of the active album. Photos from other albums stay on the TV until the album is deleted. Deleting album photos here also excludes them from the album.',
         galleryEmpty: 'There are no photos in "My Photos".', fromApp: 'App',
         deleteSelected: 'Delete selected ({n})', deletePhotos: 'Delete photos from TV',
         deletePhotosMsg: '{n} photos will be deleted from the TV.', photosDeleted: '{n} photos deleted',
@@ -290,7 +298,7 @@ const S = {
     lang: readStorage('lang') || (navigator.language || 'en').slice(0, 2),
     tab: 'albums',
     version: '',
-    meta: { mattes: ['none'], intervals: [60], roots: [], max_images: 100 },
+    meta: { mattes: ['none'], intervals: [60], roots: [], max_images: 100, storage_warn_mb: 1024 },
     albums: [],
     tvs: [],
     slots: [],
@@ -363,6 +371,17 @@ function intervalLabel(m) {
     if (m < 60) return t('minutes', { n: m });
     if (m < 1440) return t('hours', { n: m / 60 });
     return m === 1440 ? t('oneDay') : t('days', { n: m / 1440 });
+}
+
+function fmtMB(bytes) {
+    const mb = bytes / 1048576;
+    return t('megabytes', { n: mb.toLocaleString(t('locale'), { maximumFractionDigits: mb < 10 ? 1 : 0 }) });
+}
+
+function storageWarning(tv) {
+    const limit = (S.meta.storage_warn_mb || 1024) * 1048576;
+    if (!tv.uploaded_bytes || tv.uploaded_bytes <= limit) return '';
+    return `<div class="banner warn"><p>${esc(t('storageWarn', { name: tv.name, used: fmtMB(tv.uploaded_bytes), limit: fmtMB(limit) }))}</p></div>`;
 }
 
 function matteLabel(id) {
@@ -534,6 +553,7 @@ function renderAlbums() {
                     <span class="row-meta">
                         ${a.sources.length ? esc(albumCount(a)) : `<span class="tag warn">${t('noSources')}</span>`}
                         · ${esc(intervalLabel(a.interval))} · ${t(a.shuffle ? 'shuffle' : 'sequential')}
+                        ${a.tv_bytes ? `· ${esc(t('onTv', { size: fmtMB(a.tv_bytes) }))}` : ''}
                     </span>
                 </span>
                 ${CHEVRON}
@@ -549,6 +569,7 @@ function albumCount(a) {
 function renderTvs() {
     if (!S.tvs.length) return renderEmpty('emptyTvsTitle', 'emptyTvsText', 'new-tv', 'newTv');
     return `${topAction('new-tv', 'newTv')}
+        ${S.tvs.map(storageWarning).join('')}
         <section class="card"><div class="rows">${S.tvs.map(tv => `
             <button type="button" class="row" data-tv="${tv.id}">
                 <span class="row-main">
@@ -556,6 +577,7 @@ function renderTvs() {
                     <span class="row-meta">
                         ${stateTag(tv)}
                         ${esc(tv.active_album ? t('nowShowing', { name: tv.active_album.name }) : t('noActiveSlot'))}
+                        ${tv.uploaded_bytes ? `· ${esc(fmtMB(tv.uploaded_bytes))}` : ''}
                         ${tv.last_error ? `<span class="tag danger">${esc(errText(new Error(tv.last_error)))}</span>` : ''}
                     </span>
                 </span>
@@ -734,7 +756,7 @@ function pageThumb(p) {
         ? `<span class="tag danger">${esc(errText(new Error(p.last_error)))}</span>`
         : (p.status !== 'ready' ? `<span class="tag">${esc(t(`pageStatus.${status}`))}</span>` : '');
     return `<button type="button" class="thumb" data-page="${p.id}" title="${esc(p.members.map(m => m.key).join(', '))}">
-        ${p.rendered_revision ? `<img src="/api/pages/${p.id}/thumb?rev=${p.rendered_revision}" alt="" loading="lazy">`
+        ${p.rendered_revision ? `<img src="/api/pages/${p.id}/thumb?rev=${p.rendered_revision}&v=${esc(p.v)}" alt="" loading="lazy">`
         : '<span class="small-loading" style="min-height:100%"><span class="spinner"></span></span>'}${tag}</button>`;
 }
 
@@ -778,14 +800,14 @@ function openPage(pageId) {
     const p = (F.pages || []).find(x => x.id === pageId);
     if (!p) return;
     openSheet(t('page'), `
-        ${p.rendered_revision ? `<div class="thumb large"><img src="/api/pages/${p.id}/image?rev=${p.rendered_revision}" alt=""></div>
-            <p class="hint"><a href="/api/pages/${p.id}/image?rev=${p.rendered_revision}" target="_blank" rel="noopener">${t('openFull')}</a></p>`
+        ${p.rendered_revision ? `<div class="thumb large"><img src="/api/pages/${p.id}/image?rev=${p.rendered_revision}&v=${esc(p.v)}" alt=""></div>
+            <p class="hint"><a href="/api/pages/${p.id}/image?rev=${p.rendered_revision}&v=${esc(p.v)}" target="_blank" rel="noopener">${t('openFull')}</a></p>`
         : '<div class="small-loading"><span class="spinner"></span></div>'}
         ${p.status === 'error' ? `<div class="banner warn"><p>${esc(errText(new Error(p.last_error)))}</p></div>` : ''}
         <section class="set">
             <h3>${t('pageMembers')}</h3>
             <div class="thumbs">${p.members.map(m => `
-                <div class="thumb" title="${esc(m.key)}"><img src="/api/images/${m.id}/thumb" alt="" loading="lazy">
+                <div class="thumb" title="${esc(m.key)}"><img src="/api/images/${m.id}/thumb?v=${esc(m.v)}" alt="" loading="lazy">
                     <span class="tag">${esc(m.key)}</span></div>`).join('')}</div>
         </section>
         <div class="actions">
@@ -805,7 +827,7 @@ async function loadAlbumImages(albumId) {
     if (!box || F.albumId !== albumId) return;
     box.innerHTML = images.length ? images.map(img => `
         <button type="button" class="thumb${img.excluded ? ' off' : ''}" data-image="${img.id}" title="${esc(img.key)}">
-            <img src="/api/images/${img.id}/thumb" alt="" loading="lazy">
+            <img src="/api/images/${img.id}/thumb?v=${esc(img.v)}" alt="" loading="lazy">
         </button>`).join('') : `<p class="muted small">${t('noImages')}</p>`;
 }
 
@@ -985,10 +1007,12 @@ function openTv(id) {
     openSheet(tv.name, `
         ${tv.paired ? '' : `<div class="banner warn"><p><b>${t('pairTitle')}.</b> ${t('pairHelp')}</p>
             <button type="button" class="btn small primary" data-action="pair">${t('pair')}</button></div>`}
+        ${storageWarning(tv)}
         <div class="stats">
             <div class="stat"><span>${t('state')}</span><b>${stateTag(tv)}</b><small>${esc(fmtDateTime(tv.last_seen))}</small></div>
             <div class="stat"><span>${t('album')}</span><b class="small">${esc(tv.active_album ? tv.active_album.name : t('noActiveSlot'))}</b></div>
             <div class="stat"><span>${t('uploaded')}</span><b>${tv.uploaded}</b></div>
+            <div class="stat"><span>${t('storageUsed')}</span><b>${esc(fmtMB(tv.uploaded_bytes || 0))}</b></div>
         </div>
         <section class="set">
             <div class="set-row"><span class="muted small">${t('model')}</span><span class="small">${esc(tv.model || '–')}</span></div>
@@ -1070,7 +1094,7 @@ async function openGallery(tvId) {
         <p class="hint">${t('galleryHelp')}</p>
         ${items.length ? `<div class="thumbs" style="margin-top:12px">${items.map(it => `
             <button type="button" class="thumb" data-gsel="${esc(it.content_id)}"${it.page_id ? ' data-gpage="1"' : ''} title="${esc(it.name || it.content_id)}">
-                <img src="${it.image_id ? `/api/images/${it.image_id}/thumb` : `/api/tvs/${tvId}/gallery/${encodeURIComponent(it.content_id)}/thumb`}" alt="" loading="lazy">
+                <img src="${it.image_id ? `/api/images/${it.image_id}/thumb?v=${esc(it.image_v)}` : `/api/tvs/${tvId}/gallery/${encodeURIComponent(it.content_id)}/thumb`}" alt="" loading="lazy">
                 ${it.managed ? `<span class="tag ok">${esc([it.album || t('fromApp'), it.page_id ? t('page') : ''].filter(Boolean).join(' · '))}</span>` : ''}
             </button>`).join('')}</div>` : `<p class="muted" style="margin-top:12px">${t('galleryEmpty')}</p>`}
         <div class="actions spread">

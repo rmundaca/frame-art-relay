@@ -1,4 +1,4 @@
-"""App-driven rotation for intervals shorter than 10 minutes."""
+"""App-driven rotation (every interval)."""
 import random
 import unittest
 from datetime import timedelta
@@ -155,26 +155,33 @@ class RotationTickTest(MediaRootMixin, unittest.TestCase):
 
     def test_rotates_only_album_photos_on_schedule(self):
         self.supervise()
-        self.assertFalse(self.rotate(0))  # the clock starts when entering the slot
+        self.assertTrue(self.rotate(0))  # the first image is shown on entering the slot
         self.assertFalse(self.rotate(1))
         self.assertTrue(self.rotate(2))
         self.assertFalse(self.rotate(3))
         self.assertTrue(self.rotate(4))
         self.assertTrue(self.rotate(6))
-        self.assertTrue(self.rotate(8))
         own = self.own_ids()
         self.assertEqual(self.client.selected, own + own[:1])
         self.assertNotIn("MY_F9999", self.client.selected)  # the foreign photo does not enter the rotation
 
+    def test_long_intervals_are_rotated_by_the_app(self):
+        self.album.interval = 30
+        self.db.commit()
+        self.supervise()
+        self.assertEqual(self.client.rotations, [(0, False)])
+        self.assertTrue(self.rotate(0))
+        self.assertFalse(self.rotate(10))
+        self.assertTrue(self.rotate(30))
+
     def test_screen_off_or_in_use_is_not_touched(self):
         self.supervise()
-        self.rotate(0)
         for state in ("tv", "offline", "standby"):
             self.client.state_value = state
-            self.assertFalse(self.rotate(5))
+            self.assertFalse(self.rotate(0))
         self.assertEqual(self.client.selected, [])
         self.client.state_value = "art"
-        self.assertTrue(self.rotate(5))  # recovers as soon as the screen comes back on
+        self.assertTrue(self.rotate(0))  # recovers as soon as the screen comes back on
 
     def test_busy_channel_waits_without_error(self):
         self.supervise()
@@ -194,16 +201,16 @@ class RotationTickTest(MediaRootMixin, unittest.TestCase):
         self.client.fail_select = None
         self.assertTrue(self.rotate(2))
 
-    def test_native_albums_and_outside_slots_are_left_alone(self):
+    def test_new_album_is_shown_right_away_and_outside_slots_left_alone(self):
         self.supervise()
         self.rotate(0)
         self.slot.album_id = self.other.id
         self.db.commit()
-        self.assertFalse(self.rotate(10))
+        self.assertFalse(self.rotate(10))  # nothing of that album on the TV yet
         self.slot.album_id = self.album.id
         self.db.commit()
-        self.assertFalse(self.rotate(12))  # mazo nuevo: espera un intervalo
-        self.assertTrue(self.rotate(14))
+        self.assertTrue(self.rotate(12))  # new deck: no full interval wait
+        self.assertFalse(self.rotate(13))
         night = rotation.tick(self.db, self.tv, now=MONDAY_NOON + timedelta(hours=12),
                               client_factory=lambda tv: self.client)
         self.assertFalse(night)

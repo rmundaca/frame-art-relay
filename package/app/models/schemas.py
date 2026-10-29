@@ -101,6 +101,9 @@ class TvContent(Base):
     page_revision = Column(Integer, nullable=True)
     # Variant of the uploaded single image (e.g. with the date drawn); None is the original
     render_sig = Column(String, nullable=True)
+    # No foreign key: it outlives the album so its photos can be deleted from the TV afterwards
+    album_id = Column(Integer, nullable=True, index=True)
+    size = Column(Integer, nullable=True)  # bytes uploaded
     content_id = Column(String, nullable=False)
     uploaded_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
@@ -157,12 +160,18 @@ _NEW_COLUMNS = {
     "images": [("width", "INTEGER"), ("height", "INTEGER"), ("taken_at", "VARCHAR"), ("subject_box", "VARCHAR"),
                ("subject_sig", "VARCHAR")],
     "tv_contents": [("page_id", "INTEGER REFERENCES composition_pages(id) ON DELETE SET NULL"),
-                    ("page_revision", "INTEGER"), ("render_sig", "VARCHAR")],
+                    ("page_revision", "INTEGER"), ("render_sig", "VARCHAR"), ("album_id", "INTEGER"),
+                    ("size", "INTEGER")],
 }
 
-# Idempotent statements that fix legacy data
+# Idempotent statements that fix legacy data, run only when the "table.column" they need exist
 _DATA_FIXES = [
-    # "UPDATE albums SET status = 'active' WHERE status IS NULL",
+    ({"tv_contents.image_id", "images.album_id"},
+     "UPDATE tv_contents SET album_id = (SELECT album_id FROM images WHERE images.id = tv_contents.image_id) "
+     "WHERE album_id IS NULL AND image_id IS NOT NULL"),
+    ({"tv_contents.page_id", "composition_pages.album_id"},
+     "UPDATE tv_contents SET album_id = (SELECT album_id FROM composition_pages "
+     "WHERE composition_pages.id = tv_contents.page_id) WHERE album_id IS NULL AND page_id IS NOT NULL"),
 ]
 
 
@@ -178,5 +187,8 @@ def init_db_migrations(engine):
             for name, ddl in cols:
                 if name not in existing:
                     conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}"))
-        for stmt in _DATA_FIXES:
-            conn.execute(text(stmt))
+        live = inspect(conn)
+        columns = {f"{t}.{c['name']}" for t in live.get_table_names() for c in live.get_columns(t)}
+        for needs, stmt in _DATA_FIXES:
+            if needs <= columns:
+                conn.execute(text(stmt))
