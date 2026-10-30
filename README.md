@@ -11,6 +11,25 @@
 
 ---
 
+## What problem does it solve?
+
+The Frame looks best showing your own photos in art mode, but keeping them there is manual work:
+
+- Photos are added by hand from the phone app, a few at a time. There is no way to point the TV at a photo
+  folder on a NAS or at a shared iCloud album and keep it in sync.
+- The TV's slideshow mixes everything in "My Photos". You cannot have one set of photos in the morning,
+  another in the evening, or different ones per TV.
+- Portrait and odd-sized photos do not fit a 16:9 screen well, and the TV's storage fills up with old uploads.
+
+Frame Art Relay solves this. Point it at your photo folders or iCloud shared albums, decide which
+album each TV shows and when, and it uploads, rotates and cleans up the photos on its own. It runs unattended
+on a low-power NAS and is controlled from a phone browser.
+
+<p align="center">
+  <img src="docs/screenshots/tv-output.jpg" width="640" alt="Three photos combined into one 4K image, as sent to the TV"><br>
+  <sub>What the TV receives: three photos combined into one 4K image over a paper background.</sub>
+</p>
+
 ## Features
 
 | | |
@@ -26,6 +45,67 @@
 
 Works on phone and desktop, in English and Spanish, with light and dark themes. Every option is explained
 behind its **?** button.
+
+## Screenshots
+
+Taken with demo data: generated photos and simulated TVs.
+
+### Albums
+
+<table>
+  <tr>
+    <td width="33%"><img src="docs/screenshots/albums.png" alt="Album list"></td>
+    <td width="33%"><img src="docs/screenshots/album.png" alt="Album settings, layouts and photos"></td>
+    <td width="33%"><img src="docs/screenshots/layout.png" alt="Layout detail"></td>
+  </tr>
+  <tr>
+    <td>Each album shows its photo count, rotation interval, order and the space it takes on the TVs.</td>
+    <td>Album settings: rotation, crop or whole photos, layouts, date stamp, smart crop, background and matte.
+      Below, the generated layouts and the original photos; tap a photo to exclude it.</td>
+    <td>A layout and the photos it combines. <b>View full size</b> opens the 4K image sent to the TV.</td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/folder.png" alt="Folder browser"></td>
+    <td><img src="docs/screenshots/icloud.png" alt="Add an iCloud shared album"></td>
+    <td><img src="docs/screenshots/album-help.png" alt="Album help"></td>
+  </tr>
+  <tr>
+    <td>Add folders from the allowed locations, with or without subfolders.</td>
+    <td>Or paste the link of a public iCloud shared album.</td>
+    <td>The <b>?</b> button explains every option.</td>
+  </tr>
+</table>
+
+### TVs
+
+<table>
+  <tr>
+    <td width="33%"><img src="docs/screenshots/tvs.png" alt="TV list"></td>
+    <td width="33%"><img src="docs/screenshots/tv.png" alt="TV detail"></td>
+    <td width="33%"><img src="docs/screenshots/gallery.png" alt="TV gallery"></td>
+  </tr>
+  <tr>
+    <td>Each TV shows its state (art mode, in use, off), the album it is showing and the space used.</td>
+    <td>TV detail: status, active album, uploads, model and network data. Sync, pair, pause or edit it.</td>
+    <td>The TV's "My Photos": photos uploaded by the app are labelled with their album. Select and delete
+      photos to free space.</td>
+  </tr>
+</table>
+
+### Schedule and settings
+
+<table>
+  <tr>
+    <td width="33%"><img src="docs/screenshots/schedule.png" alt="Weekly schedule"></td>
+    <td width="33%"><img src="docs/screenshots/slot.png" alt="Time slot editor"></td>
+    <td width="33%"><img src="docs/screenshots/settings-dark.png" alt="Settings in dark theme and Spanish"></td>
+  </tr>
+  <tr>
+    <td>Weekly time slots per TV. Slots can cross midnight or be paused.</td>
+    <td>A slot picks the TV, the album, the days and the hours.</td>
+    <td>Settings: theme, language, allowed folders and the Gemini key for smart crop (dark theme, Spanish).</td>
+  </tr>
+</table>
 
 ## Requirements
 
